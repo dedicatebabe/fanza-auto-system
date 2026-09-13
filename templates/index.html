@@ -363,8 +363,8 @@
       <a class="brand" href="index.html">
         <div class="brand-mark">夜</div>
         <div>
-          <strong>夜野リブレX</strong>
-          <span>FANZA REVIEW MEDIA</span>
+          <strong>Yoru no Libre X</strong>
+          <span>FANZA reviews</span>
         </div>
       </a>
       <a class="nav-link" href="#reviews">Reviews</a>
@@ -373,28 +373,28 @@
 
   <main class="main">
     <section class="hero">
-      <p class="eyebrow">TONIGHT'S PICKS</p>
-      <h1>今夜、何を観る？</h1>
-      <p>セール中の注目作と、いま評判のタイトルをレビュー形式で紹介しています。短く読んで、気になったら公式へ。</p>
+      <p class="eyebrow">Tonight's picks</p>
+      <h1>What are you watching tonight?</h1>
+      <p>Short reviews of sale picks and hot titles. Read a bit, then go official if it clicks.</p>
     </section>
 
     <section id="reviews">
       <div class="section-head">
-        <h2>最新レビュー</h2>
-        <span>Updated continuously</span>
+        <h2>Latest reviews</h2>
+        <span>Updated daily</span>
       </div>
       <div class="filter-panel">
-        <p class="filter-label">TONIGHT'S MOOD</p>
-        <div class="mood-chips" role="group" aria-label="気分で絞り込み">
+        <p class="filter-label">Mood</p>
+        <div class="mood-chips" role="group" aria-label="Filter by mood">
           {{MOOD_FILTERS}}
         </div>
         <div class="search-wrap">
-          <label for="mood-search" class="filter-label">キーワード（気分・雰囲気）</label>
-          <input id="mood-search" type="search" placeholder="例: 甘め、背徳、セール…" autocomplete="off">
+          <label for="mood-search" class="filter-label">Search</label>
+          <input id="mood-search" type="search" placeholder="sweet, taboo, sale..." autocomplete="off">
         </div>
         <p class="filter-status" id="filter-status" aria-live="polite"></p>
       </div>
-      <div class="card-grid" aria-label="作品一覧">
+      <div class="card-grid" aria-label="Reviews">
         {{CARD_GRID}}
       </div>
     </section>
@@ -402,9 +402,9 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <strong>夜野リブレX</strong>
-      <div>FANZAのおすすめ作品を扱うレビューメディアです。当サイトはアフィリエイト広告を含みます。</div>
-      <div>&copy; {{YEAR}} 夜野リブレX</div>
+      <strong>Yoru no Libre X</strong>
+      <div>FANZA review media. This site contains affiliate ads.</div>
+      <div>&copy; {{YEAR}} Yoru no Libre X</div>
     </div>
   </footer>
   <script>
@@ -429,9 +429,9 @@
         });
         if (status) {
           if (activeMood === "all" && !q) {
-            status.textContent = visible + "件のレビュー";
+            status.textContent = visible + " reviews";
           } else {
-            status.textContent = visible + "件ヒット";
+            status.textContent = visible + " hits";
           }
         }
       }

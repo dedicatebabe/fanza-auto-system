@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.2.0
+# Version: 1.3.0
 # Date: 2026-09-13
-# Summary: 恋人・彼氏だけでは甘めにしない
+# Summary: 気分タグの表示を短い英語に変更
 # ==========================================
 """気分（mood）タグの定義と推定。"""
 
@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from modules.dmm_api import FanzaItem
 
-# 公式ジャンルのコピーではなく、編集メディア側の「今夜の気分」
+# 公式ジャンルのコピーではなく、編集メディア側の気分タグ
 MOOD_OPTIONS: tuple[str, ...] = (
-    "甘め",
-    "背徳",
-    "スピード重視",
-    "女優推し",
-    "物語寄り",
-    "セール特価",
+    "Sweet",
+    "Taboo",
+    "Quick",
+    "Actress",
+    "Story",
+    "On sale",
 )
 
 
@@ -34,9 +34,9 @@ def infer_moods_from_text(
     moods: list[str] = []
 
     if discount_percent is not None and discount_percent >= 30:
-        moods.append("セール特価")
-    elif "セール" in blob or "%off" in blob or "% off" in blob or "％off" in blob:
-        moods.append("セール特価")
+        moods.append("On sale")
+    elif "セール" in blob or "%off" in blob or "% off" in blob or "％off" in blob or "on sale" in blob:
+        moods.append("On sale")
 
     is_haitoku = any(
         k in blob
@@ -60,13 +60,13 @@ def infer_moods_from_text(
         )
     )
     if is_haitoku:
-        moods.append("背徳")
+        moods.append("Taboo")
 
     if not is_haitoku and any(
         k in blob
-        for k in ("いちゃ", "いちゃラブ", "純愛", "甘め", "デート")
+        for k in ("いちゃ", "いちゃラブ", "純愛", "甘め", "デート", "sweet")
     ):
-        moods.append("甘め")
+        moods.append("Sweet")
 
     if any(
         k in blob
@@ -82,22 +82,22 @@ def infer_moods_from_text(
             "1116分",
         )
     ):
-        moods.append("スピード重視")
+        moods.append("Quick")
 
     if any(
         k in blob
         for k in ("専属", "デビュー", "debut", "主演", "単体")
     ):
-        moods.append("女優推し")
+        moods.append("Actress")
 
     if any(
         k in blob
         for k in ("ドラマ", "物語", "ストーリー", "シナリオ", "感動")
     ):
-        moods.append("物語寄り")
+        moods.append("Story")
 
     if not moods:
-        moods.append("女優推し" if "出演" in blob else "スピード重視")
+        moods.append("Actress" if "出演" in blob else "Quick")
 
     ordered: list[str] = []
     for mood in MOOD_OPTIONS:

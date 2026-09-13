@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.3.0
+# Version: 2.4.0
 # Date: 2026-09-13
-# Summary: 記事は未サニタイズ、X投稿だけ厳しくする
+# Summary: 記事見出しを短い英語に統一
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -240,17 +240,17 @@ def _fallback_article_html(item: FanzaItem) -> str:
         points.append("公式ページの紹介写真で、自分の好みか確認しやすい")
     lis = "\n  ".join(f"<li>{html.escape(p)}</li>" for p in points[:5])
     desc = html.escape(item.description).replace("\n", "<br>")
-    return f"""<h2>ひとことで言うと</h2>
+    return f"""<h2>In a nutshell</h2>
 <p>{hook}</p>
-<h2>見どころポイント</h2>
+<h2>Highlights</h2>
 <ul>
   {lis}
 </ul>
-<h2>おすすめな人</h2>
+<h2>Who it's for</h2>
 <p>今夜の気分に合うかだけ先に見て、気になったら公式で詳細を確認したい人向け。</p>
-<h2>ちょっと気になる点</h2>
+<h2>One caveat</h2>
 <p>タイトルの煽りと中身の温度感がずれることもある。予告と作画を見てからで十分。</p>
-<h2>まとめ</h2>
+<h2>Wrap-up</h2>
 <p>{desc}</p>
 """
 
@@ -338,7 +338,7 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
         )
         retry_prompt = (
             "次の作品を観た人の口調で、エロ寄りの HTML レビューにして。"
-            "見出しは ひとことで言うと / 見どころポイント / おすすめな人 / ちょっと気になる点 / まとめ。"
+            "見出しは In a nutshell / Highlights / Who it's for / One caveat / Wrap-up。"
             "未成年連想は禁止。タイトル全文は繰り返さない。\n\n"
             f"{context}"
         )

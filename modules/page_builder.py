@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.5.0
+# Version: 2.6.0
 # Date: 2026-09-13
-# Summary: 本文から価格を補完しカード要約を短く保つ
+# Summary: UI文言を短い英語に揃え、既存記事を再出力
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 DOCS_DIR_NAME = "docs"
 TEMPLATES_DIR_NAME = "templates"
 INDEX_ENTRIES_FILE = ".index_entries.json"
-SITE_NAME = "夜野リブレX - FANZAおすすめメディア"
+SITE_NAME = "Yoru no Libre X"
 
 
 @dataclass
@@ -206,7 +206,7 @@ def _render_article_page(
     discount_badge = ""
     if item.discount_percent is not None and item.discount_percent >= 30:
         discount_badge = (
-            f'<span class="badge">約{int(item.discount_percent)}% OFF</span>'
+            f'<span class="badge">{int(item.discount_percent)}% OFF</span>'
         )
 
     og_image_tag = ""
@@ -243,7 +243,7 @@ def _render_card(entry: IndexEntry) -> str:
     href = html.escape(entry.article_filename)
     date_str = html.escape(entry.created_at[:10] if entry.created_at else "")
     summary = html.escape(entry.summary or "レビュー記事を見る")
-    moods = [m for m in entry.moods if m in MOOD_OPTIONS] or ["スピード重視"]
+    moods = [m for m in entry.moods if m in MOOD_OPTIONS] or ["Quick"]
     moods_attr = html.escape(",".join(moods))
     search_blob = html.escape(
         f"{entry.title} {entry.summary} {' '.join(moods)}".lower()
@@ -266,14 +266,14 @@ def _render_card(entry: IndexEntry) -> str:
         f"<h3>{title}</h3>"
         f'<div class="mood-row">{mood_pills}</div>'
         f'<p class="summary">{summary}</p>'
-        f'<div class="more">レビューを読む →</div>'
+        f'<div class="more">Read review →</div>'
         f"</div></a>"
     )
 
 
 def _render_mood_filters() -> str:
     chips = [
-        '<button type="button" class="mood-chip is-active" data-mood="all" aria-pressed="true">すべて</button>'
+        '<button type="button" class="mood-chip is-active" data-mood="all" aria-pressed="true">All</button>'
     ]
     for mood in MOOD_OPTIONS:
         chips.append(
@@ -289,14 +289,14 @@ def _render_index_page(entries: list[IndexEntry], *, pages_base_url: str) -> str
     if sorted_entries:
         cards = "\n".join(_render_card(e) for e in sorted_entries)
     else:
-        cards = '<p class="empty">まだ記事がありません。次回の更新をお待ちください。</p>'
+        cards = '<p class="empty">No reviews yet. Check back after the next update.</p>'
 
     template = _load_template("index.html")
     return _apply_template(
         template,
         {
             "PAGE_TITLE": SITE_NAME,
-            "META_DESCRIPTION": "セール中の注目作と評判のタイトルをレビュー形式で紹介",
+            "META_DESCRIPTION": "Short FANZA reviews. Read a bit, then open the official page.",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/"),
             "MOOD_FILTERS": _render_mood_filters(),
             "CARD_GRID": cards,
@@ -312,6 +312,7 @@ def write_article_and_update_index(
     github_pages_base_url: str,
     summary: str | None = None,
     moods: list[str] | None = None,
+    created_at: str | None = None,
 ) -> Path:
     """
     個別記事 HTML を書き出し、index.html とメタデータを更新する。
@@ -321,7 +322,7 @@ def write_article_and_update_index(
     docs_path = docs_dir()
     filename = article_filename_for(item.content_id)
     article_path = docs_path / filename
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = created_at or datetime.now(timezone.utc).isoformat()
     priced_item = _item_with_html_prices(item, article_html_body)
     card_summary = (summary or "").strip() or extract_card_summary(
         article_html_body,
@@ -400,7 +401,7 @@ def refresh_published_cards(*, github_pages_base_url: str) -> int:
             list_price=list_price,
             sale_price=sale_price,
             discount_percent=discount if discount is not None else (
-                30.0 if "セール特価" in entry.moods else None
+                30.0 if "On sale" in entry.moods or "セール特価" in entry.moods else None
             ),
             review_average=None,
             review_count=None,
