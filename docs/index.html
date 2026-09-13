@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>夜野リブレX - FANZAおすすめメディア</title>
+  <meta name="description" content="セール中の注目作と評判のタイトルをレビュー形式で紹介">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="夜野リブレX - FANZAおすすめメディア">
+  <meta property="og:description" content="セール中の注目作と評判のタイトルをレビュー形式で紹介">
+  <meta property="og:url" content="https://dedicatebabe.github.io/fanza-auto-system/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Shippori+Mincho:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #12151c;
+      --bg-mid: #1a1f2b;
+      --panel: rgba(255, 255, 255, 0.04);
+      --panel-strong: rgba(255, 255, 255, 0.07);
+      --text: #f3f1ec;
+      --muted: #a8a59c;
+      --line: rgba(243, 241, 236, 0.12);
+      --gold: #d4b483;
+      --gold-soft: rgba(212, 180, 131, 0.16);
+      --ink: #0b0d12;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Instrument Sans", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(212, 180, 131, 0.18), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 90% 10%, rgba(88, 110, 160, 0.22), transparent 50%),
+        linear-gradient(165deg, var(--bg-deep) 0%, var(--bg-mid) 48%, #10131a 100%);
+      line-height: 1.75;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.045;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+    a { color: inherit; text-decoration: none; }
+    .site-header, .main, .site-footer { position: relative; z-index: 1; }
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      border-bottom: 1px solid var(--line);
+      background: rgba(18, 21, 28, 0.78);
+      backdrop-filter: blur(16px);
+    }
+    .header-inner, .main, .footer-inner {
+      width: min(1120px, calc(100% - 2rem));
+      margin: 0 auto;
+    }
+    .header-inner {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #2a2430, #12151c);
+      border: 1px solid rgba(212, 180, 131, 0.35);
+      color: var(--gold);
+      font-family: "Shippori Mincho", serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .brand strong {
+      display: block;
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .brand span {
+      display: block;
+      margin-top: 0.1rem;
+      color: var(--muted);
+      font-size: 0.76rem;
+      letter-spacing: 0.06em;
+    }
+    .nav-link {
+      color: var(--muted);
+      font-size: 0.88rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .nav-link:hover { color: var(--gold); }
+    .main { padding: 2.6rem 0 5rem; }
+    .hero {
+      display: grid;
+      gap: 1.4rem;
+      margin-bottom: 2.4rem;
+      padding: 2rem 1.6rem;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background:
+        linear-gradient(135deg, rgba(212, 180, 131, 0.08), transparent 42%),
+        var(--panel);
+      box-shadow: var(--shadow);
+      animation: rise 0.7s ease both;
+    }
+    .hero .eyebrow {
+      margin: 0;
+      color: var(--gold);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+    }
+    .hero h1 {
+      margin: 0;
+      max-width: 14em;
+      font-family: "Shippori Mincho", serif;
+      font-size: clamp(1.9rem, 4.2vw, 2.8rem);
+      font-weight: 600;
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 36rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 0 0 1.2rem;
+      padding-bottom: 0.85rem;
+      border-bottom: 1px solid var(--line);
+      animation: rise 0.8s ease 0.08s both;
+    }
+    .section-head h2 {
+      margin: 0;
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .section-head span {
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.35rem;
+    }
+    .work-card {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      box-shadow: var(--shadow);
+      transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+      animation: rise 0.75s ease both;
+    }
+    .work-card:nth-child(2) { animation-delay: 0.06s; }
+    .work-card:nth-child(3) { animation-delay: 0.12s; }
+    .work-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(212, 180, 131, 0.4);
+      background: rgba(255, 255, 255, 0.09);
+    }
+    .work-card .thumb {
+      position: relative;
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      background: #0b0d12;
+    }
+    .work-card .thumb::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 42%;
+      background: linear-gradient(transparent, rgba(10, 12, 18, 0.85));
+    }
+    .work-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.45s ease;
+    }
+    .work-card:hover .thumb img { transform: scale(1.04); }
+    .work-card .body {
+      display: grid;
+      gap: 0.55rem;
+      padding: 1.1rem 1.15rem 1.25rem;
+      flex: 1;
+    }
+    .work-card .date {
+      color: var(--gold);
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+    }
+    .work-card h3 {
+      margin: 0;
+      font-size: 1.02rem;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+    .work-card .summary {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .work-card .mood-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .mood-pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 180, 131, 0.28);
+      background: rgba(212, 180, 131, 0.1);
+      color: var(--gold);
+      font-size: 0.72rem;
+      letter-spacing: 0.02em;
+    }
+    .filter-panel {
+      margin: 0 0 1.35rem;
+      padding: 1rem 1.05rem;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      animation: rise 0.75s ease 0.04s both;
+    }
+    .filter-label {
+      margin: 0 0 0.7rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+    }
+    .mood-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
+    }
+    .mood-chip {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 0.45rem 0.85rem;
+      font: inherit;
+      font-size: 0.84rem;
+      cursor: pointer;
+      transition: border-color .2s ease, background .2s ease, color .2s ease;
+    }
+    .mood-chip:hover {
+      border-color: rgba(212, 180, 131, 0.45);
+    }
+    .mood-chip.is-active {
+      background: rgba(212, 180, 131, 0.16);
+      border-color: rgba(212, 180, 131, 0.55);
+      color: var(--gold);
+    }
+    .search-wrap {
+      display: grid;
+      gap: 0.45rem;
+    }
+    .search-wrap input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(8, 10, 14, 0.35);
+      color: var(--text);
+      padding: 0.75rem 0.9rem;
+      font: inherit;
+      font-size: 0.92rem;
+      outline: none;
+    }
+    .search-wrap input:focus {
+      border-color: rgba(212, 180, 131, 0.5);
+    }
+    .search-wrap input::placeholder { color: #7d7a72; }
+    .filter-status {
+      margin: 0.65rem 0 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .work-card.is-hidden { display: none; }
+    .work-card .more {
+      margin-top: 0.35rem;
+      color: var(--gold);
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+    }
+    .empty {
+      grid-column: 1 / -1;
+      padding: 3rem 1.2rem;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+    .site-footer {
+      border-top: 1px solid var(--line);
+      background: rgba(8, 10, 14, 0.55);
+      padding: 2.4rem 0;
+    }
+    .footer-inner {
+      display: grid;
+      gap: 0.5rem;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+    .footer-inner strong {
+      color: var(--text);
+      font-family: "Shippori Mincho", serif;
+      font-weight: 600;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 720px) {
+      .hero { padding: 1.5rem 1.15rem; }
+      .section-head { align-items: start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">夜</div>
+        <div>
+          <strong>夜野リブレX</strong>
+          <span>FANZA REVIEW MEDIA</span>
+        </div>
+      </a>
+      <a class="nav-link" href="#reviews">Reviews</a>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="hero">
+      <p class="eyebrow">TONIGHT'S PICKS</p>
+      <h1>今夜、何を観る？</h1>
+      <p>セール中の注目作と、いま評判のタイトルをレビュー形式で紹介しています。短く読んで、気になったら公式へ。</p>
+    </section>
+
+    <section id="reviews">
+      <div class="section-head">
+        <h2>最新レビュー</h2>
+        <span>Updated continuously</span>
+      </div>
+      <div class="filter-panel">
+        <p class="filter-label">TONIGHT'S MOOD</p>
+        <div class="mood-chips" role="group" aria-label="気分で絞り込み">
+          <button type="button" class="mood-chip is-active" data-mood="all" aria-pressed="true">すべて</button>
+<button type="button" class="mood-chip" data-mood="甘め" aria-pressed="false">甘め</button>
+<button type="button" class="mood-chip" data-mood="背徳" aria-pressed="false">背徳</button>
+<button type="button" class="mood-chip" data-mood="スピード重視" aria-pressed="false">スピード重視</button>
+<button type="button" class="mood-chip" data-mood="女優推し" aria-pressed="false">女優推し</button>
+<button type="button" class="mood-chip" data-mood="物語寄り" aria-pressed="false">物語寄り</button>
+<button type="button" class="mood-chip" data-mood="セール特価" aria-pressed="false">セール特価</button>
+        </div>
+        <div class="search-wrap">
+          <label for="mood-search" class="filter-label">キーワード（気分・雰囲気）</label>
+          <input id="mood-search" type="search" placeholder="例: 甘め、背徳、セール…" autocomplete="off">
+        </div>
+        <p class="filter-status" id="filter-status" aria-live="polite"></p>
+      </div>
+      <div class="card-grid" aria-label="作品一覧">
+        <a class="work-card" href="article_mida00210.html" data-moods="女優推し,セール特価" data-search="新人 現役女子大生 専属 億超えルーキーhカップ 純白彩永 av debut！ ひとことで言うと 「新人 現役女子大生 専属 億超えルーキーhカップ 純白彩永 av debut！」は、テンポと空気感が印象に残る一本。観ている途中でテンションが上がるタイプです。 見どころポイント 導入のテンポが良く、 女優推し セール特価"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00210/mida00210pl.jpg" alt="新人 現役女子大生 専属 億超えルーキーHカップ 純白彩永 AV Debut！" loading="lazy"></div><div class="body"><div class="date">2026-09-13</div><h3>新人 現役女子大生 専属 億超えルーキーHカップ 純白彩永 AV Debut！</h3><div class="mood-row"><span class="mood-pill">女優推し</span><span class="mood-pill">セール特価</span></div><p class="summary">ひとことで言うと 「新人 現役女子大生 専属 億超えルーキーHカップ 純白彩永 AV Debut！」は、テンポと空気感が印象に残る一本。観ている途中でテンションが上がるタイプです。 見どころポイント 導入のテンポが良く、</p><div class="more">レビューを読む →</div></div></a>
+<a class="work-card" href="article_h_1324skmj00719.html" data-moods="甘め,セール特価" data-search="湘南ビーチで彼氏とはしゃぐビキニギャルが好きピに内緒で早漏童貞君のデカチン連続射精チャレンジwwドピュドピュ大量精子を暴発しちゃう敏感なデカマラにムラムラ赤面発情！恋人の目の前なのに生ハメ筆おろし//とにかく中出しfestival 第一印象 「湘南ビーチで彼氏とはしゃぐビキニギャルが好きピに内緒で早漏童貞君のデカチン連続射精チャレンジwwドピュドピュ大量精子を暴発しちゃう敏感なデカマラにムラムラ赤面発情！恋人の目の前なのに生ハメ筆おろし//とにかく 甘め セール特価"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/h_1324skmj00719/h_1324skmj00719pl.jpg" alt="湘南ビーチで彼氏とはしゃぐビキニギャルが好きピに内緒で早漏童貞君のデカチン連続射精チャレンジwwドピュドピュ大量精子を暴発しちゃう敏感なデカマラにムラムラ赤面発情！恋人の目の前なのに生ハメ筆おろし//とにかく中出しFESTIVAL" loading="lazy"></div><div class="body"><div class="date">2026-09-13</div><h3>湘南ビーチで彼氏とはしゃぐビキニギャルが好きピに内緒で早漏童貞君のデカチン連続射精チャレンジwwドピュドピュ大量精子を暴発しちゃう敏感なデカマラにムラムラ赤面発情！恋人の目の前なのに生ハメ筆おろし//とにかく中出しFESTIVAL</h3><div class="mood-row"><span class="mood-pill">甘め</span><span class="mood-pill">セール特価</span></div><p class="summary">第一印象 「湘南ビーチで彼氏とはしゃぐビキニギャルが好きピに内緒で早漏童貞君のデカチン連続射精チャレンジwwドピュドピュ大量精子を暴発しちゃう敏感なデカマラにムラムラ赤面発情！恋人の目の前なのに生ハメ筆おろし//とにかく</p><div class="more">レビューを読む →</div></div></a>
+<a class="work-card" href="article_mdvr00446.html" data-moods="スピード重視,セール特価" data-search="【vr】初8kmoodyzvrbest1116分-18時間超-  スピード重視 セール特価"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mdvr00446/mdvr00446pl.jpg" alt="【VR】初8KMOODYZVRBEST1116分-18時間超-" loading="lazy"></div><div class="body"><div class="date">2026-09-13</div><h3>【VR】初8KMOODYZVRBEST1116分-18時間超-</h3><div class="mood-row"><span class="mood-pill">スピード重視</span><span class="mood-pill">セール特価</span></div><p class="summary">レビュー記事を見る</p><div class="more">レビューを読む →</div></div></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <strong>夜野リブレX</strong>
+      <div>FANZAのおすすめ作品を扱うレビューメディアです。当サイトはアフィリエイト広告を含みます。</div>
+      <div>&copy; 2026 夜野リブレX</div>
+    </div>
+  </footer>
+  <script>
+    (function () {
+      const chips = Array.from(document.querySelectorAll(".mood-chip"));
+      const cards = Array.from(document.querySelectorAll(".work-card"));
+      const search = document.getElementById("mood-search");
+      const status = document.getElementById("filter-status");
+      let activeMood = "all";
+
+      function applyFilter() {
+        const q = (search && search.value ? search.value : "").trim().toLowerCase();
+        let visible = 0;
+        cards.forEach((card) => {
+          const moods = (card.getAttribute("data-moods") || "").split(",").map((s) => s.trim()).filter(Boolean);
+          const blob = card.getAttribute("data-search") || "";
+          const moodOk = activeMood === "all" || moods.includes(activeMood);
+          const textOk = !q || blob.includes(q);
+          const show = moodOk && textOk;
+          card.classList.toggle("is-hidden", !show);
+          if (show) visible += 1;
+        });
+        if (status) {
+          if (activeMood === "all" && !q) {
+            status.textContent = visible + "件のレビュー";
+          } else {
+            status.textContent = visible + "件ヒット";
+          }
+        }
+      }
+
+      chips.forEach((chip) => {
+        chip.addEventListener("click", () => {
+          activeMood = chip.getAttribute("data-mood") || "all";
+          chips.forEach((c) => {
+            const on = c === chip;
+            c.classList.toggle("is-active", on);
+            c.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+          applyFilter();
+        });
+      });
+      if (search) {
+        search.addEventListener("input", applyFilter);
+      }
+      applyFilter();
+    })();
+  </script>
+</body>
+</html>
