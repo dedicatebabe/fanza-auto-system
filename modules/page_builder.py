@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.4.0
+# Version: 2.5.0
 # Date: 2026-09-13
-# Summary: カード要約再抽出と価格表示の欠落を補う
+# Summary: 本文から価格を補完しカード要約を短く保つ
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -65,6 +65,46 @@ def build_cushion_page_url(base_url: str, content_id: str) -> str:
     return f"{base}/{article_filename_for(content_id)}"
 
 
+def _parse_yen_from_text(raw: str) -> int | None:
+    digits = re.sub(r"[^\d]", "", raw or "")
+    if not digits:
+        return None
+    return int(digits)
+
+
+def extract_prices_from_html(raw_html: str) -> tuple[int | None, int | None, float | None]:
+    """本文に残った定価・販売価格・割引率を拾う。"""
+    text = raw_html or ""
+    list_match = re.search(r"定価\s*([0-9,]+)円", text)
+    sale_match = re.search(r"販売価格[:：]\s*([0-9,]+)円", text)
+    if sale_match is None:
+        sale_match = re.search(r"(?:今|約\d+%OFFの)\s*([0-9,]+)円", text)
+    off_match = re.search(r"約?\s*(\d+)\s*%\s*OFF", text, flags=re.IGNORECASE)
+    list_price = _parse_yen_from_text(list_match.group(1)) if list_match else None
+    sale_price = _parse_yen_from_text(sale_match.group(1)) if sale_match else None
+    discount = float(off_match.group(1)) if off_match else None
+    if discount is None and list_price and sale_price and list_price > sale_price:
+        discount = round((1.0 - sale_price / list_price) * 100.0, 1)
+    return list_price, sale_price, discount
+
+
+def _item_with_html_prices(item: FanzaItem, raw_html: str) -> FanzaItem:
+    """APIで欠けた価格を本文から補う。"""
+    list_price, sale_price, discount = extract_prices_from_html(raw_html)
+    return FanzaItem(
+        content_id=item.content_id,
+        title=item.title,
+        image_url=item.image_url,
+        affiliate_url=item.affiliate_url,
+        list_price=item.list_price or list_price,
+        sale_price=item.sale_price or sale_price,
+        discount_percent=item.discount_percent if item.discount_percent is not None else discount,
+        review_average=item.review_average,
+        review_count=item.review_count,
+        description=item.description,
+    )
+
+
 def _format_price_display(item: FanzaItem) -> str:
     if item.list_price and item.sale_price and item.list_price > item.sale_price:
         return f"定価 {item.list_price:,}円 → 今 {item.sale_price:,}円"
@@ -89,14 +129,6 @@ def _apply_template(template: str, mapping: dict[str, str]) -> str:
     for key, value in mapping.items():
         rendered = rendered.replace("{{" + key + "}}", value)
     return rendered
-
-
-def _plain_summary_from_html(article_html_body: str, fallback: str) -> str:
-    text = re.sub(r"<[^>]+>", " ", article_html_body or "")
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text:
-        text = fallback
-    return text[:90]
 
 
 def _load_index_entries(docs_path: Path) -> list[IndexEntry]:
@@ -290,14 +322,15 @@ def write_article_and_update_index(
     filename = article_filename_for(item.content_id)
     article_path = docs_path / filename
     now_iso = datetime.now(timezone.utc).isoformat()
-    card_summary = (summary or "").strip() or _plain_summary_from_html(
+    priced_item = _item_with_html_prices(item, article_html_body)
+    card_summary = (summary or "").strip() or extract_card_summary(
         article_html_body,
-        item.title,
+        priced_item,
     )
-    mood_tags = moods or infer_moods(item, summary=card_summary)
+    mood_tags = moods or infer_moods(priced_item, summary=card_summary)
 
     page_html = _render_article_page(
-        item,
+        priced_item,
         article_html_body,
         pages_base_url=github_pages_base_url,
         summary=card_summary,
@@ -358,14 +391,17 @@ def refresh_published_cards(*, github_pages_base_url: str) -> int:
             continue
         page_html = article_path.read_text(encoding="utf-8")
         body = _article_body_fragment(page_html)
+        list_price, sale_price, discount = extract_prices_from_html(page_html)
         stub = FanzaItem(
             content_id=entry.content_id,
             title=entry.title,
             image_url=entry.image_url,
             affiliate_url="",
-            list_price=None,
-            sale_price=None,
-            discount_percent=30.0 if "セール特価" in entry.moods else None,
+            list_price=list_price,
+            sale_price=sale_price,
+            discount_percent=discount if discount is not None else (
+                30.0 if "セール特価" in entry.moods else None
+            ),
             review_average=None,
             review_count=None,
             description=body,
@@ -375,6 +411,14 @@ def refresh_published_cards(*, github_pages_base_url: str) -> int:
             f"{entry.title}\n{body}\n{summary}",
             discount_percent=stub.discount_percent,
         )
+        price_line = html.escape(_format_price_display(stub))
+        page_html = re.sub(
+            r'<p class="meta">.*?</p>',
+            f'<p class="meta">{price_line}</p>',
+            page_html,
+            count=1,
+        )
+        article_path.write_text(page_html, encoding="utf-8")
         refreshed.append(
             IndexEntry(
                 content_id=entry.content_id,

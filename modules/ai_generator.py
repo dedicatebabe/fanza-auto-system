@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.2.0
+# Version: 2.3.0
 # Date: 2026-09-13
-# Summary: サニタイズ緩和とカード要約の抽出精度を改善
+# Summary: 記事は未サニタイズ、X投稿だけ厳しくする
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -64,8 +64,8 @@ def _format_price_yen(amount: int | None) -> str:
     return f"{amount:,}円"
 
 
-def _sanitize_for_prompt(text: str, *, max_len: int = 400) -> str:
-    """セーフティフィルタ回避のため、露骨な表現だけを穏やかな語に置換する。"""
+def _sanitize_for_x(text: str, *, max_len: int = 400) -> str:
+    """X投稿用。規約回避のため露骨な表現を穏やかな語に置換する。"""
     cleaned = text
     replacements = (
         (r"[●○★☆]{2,}", ""),
@@ -88,14 +88,14 @@ def _sanitize_for_prompt(text: str, *, max_len: int = 400) -> str:
     return cleaned[:max_len] if cleaned else "人気エンタメ作品"
 
 
-def _build_item_context(item: FanzaItem, *, sanitized: bool = True) -> str:
+def _build_item_context(item: FanzaItem, *, for_x: bool = False) -> str:
     """プロンプト用の作品情報テキストを組み立てる。"""
-    title = _sanitize_for_prompt(item.title, max_len=80) if sanitized else item.title
-    description = (
-        _sanitize_for_prompt(item.description, max_len=500)
-        if sanitized
-        else item.description
-    )
+    if for_x:
+        title = _sanitize_for_x(item.title, max_len=80)
+        description = _sanitize_for_x(item.description, max_len=400)
+    else:
+        title = (item.title or "").strip()[:180]
+        description = (item.description or "").strip()[:800]
     lines = [
         f"タイトル: {title}",
         f"content_id: {item.content_id}",
@@ -152,20 +152,28 @@ def _extract_response_text(response: types.GenerateContentResponse) -> str:
     return fallback
 
 
-def _safety_settings() -> list[types.SafetySetting]:
-    """アダルト紹介でもブロックされにくい安全設定。"""
-    categories = (
-        types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-        types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+def _safety_settings(*, adult_ok: bool = False) -> list[types.SafetySetting]:
+    """
+    安全設定。
+
+    adult_ok=True は Web 記事用（性的な紹介を通す）。
+    X 投稿は adult_ok=False のまま厳しくする。
+    """
+    none_th = getattr(
+        types.HarmBlockThreshold,
+        "BLOCK_NONE",
+        types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    )
+    explicit = none_th if adult_ok else types.HarmBlockThreshold.BLOCK_ONLY_HIGH
+    mapping = (
+        (types.HarmCategory.HARM_CATEGORY_HARASSMENT, types.HarmBlockThreshold.BLOCK_ONLY_HIGH),
+        (types.HarmCategory.HARM_CATEGORY_HATE_SPEECH, types.HarmBlockThreshold.BLOCK_ONLY_HIGH),
+        (types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, explicit),
+        (types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, types.HarmBlockThreshold.BLOCK_ONLY_HIGH),
     )
     return [
-        types.SafetySetting(
-            category=category,
-            threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        )
-        for category in categories
+        types.SafetySetting(category=category, threshold=threshold)
+        for category, threshold in mapping
     ]
 
 
@@ -175,6 +183,7 @@ def _generate_text(
     system_prompt: str,
     user_prompt: str,
     temperature: float,
+    adult_ok: bool = False,
 ) -> str:
     """Gemini でテキストを1回生成する。"""
     try:
@@ -185,7 +194,7 @@ def _generate_text(
                 system_instruction=system_prompt,
                 temperature=temperature,
                 max_output_tokens=4096,
-                safety_settings=_safety_settings(),
+                safety_settings=_safety_settings(adult_ok=adult_ok),
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(
                     disable=True
                 ),
@@ -201,12 +210,12 @@ def _fallback_hook(item: FanzaItem) -> str:
     """作品属性から、タイトルを繰り返さない導入文を作る。"""
     blob = f"{item.title}\n{item.description}"
     if any(k in blob for k in ("NTR", "寝取", "内緒", "禁断")):
-        return "禁断の関係性が軸の一本。スリル寄りに観たい夜向け。"
+        return "彼氏や恋人の前で崩れる背徳もの。見られてる緊張感が欲しい夜向け。"
     if any(k in blob for k in ("デビュー", "Debut", "専属")):
-        return "新人専属の初々しさが前面に出ている。顔と空気感で選びたい人向け。"
+        return "専属新人の初々しさと身体のインパクトが売り。顔と色気で選びたい一本。"
     if any(k in blob for k in ("VR", "ベスト", "総集編", "8時間", "18時間")):
-        return "分量と映像の密度で押してくる作品。じっくり選びたい日に向いている。"
-    return "公式の紹介を見て好みが分かれるタイプ。雰囲気重視で選びたい一本。"
+        return "長回しで没入できる密度の高い一本。何度も引っ張りたい夜向け。"
+    return "煽りタイトルより、肌の距離感と声で判断したいタイプ。"
 
 
 def _fallback_article_html(item: FanzaItem) -> str:
@@ -220,7 +229,7 @@ def _fallback_article_html(item: FanzaItem) -> str:
     if any(k in item.description for k in ("専属", "単体", "デビュー")):
         points.append("一人に寄った作りで、顔と声の印象が残りやすい")
     if any(k in f"{item.title}{item.description}" for k in ("NTR", "寝取", "内緒")):
-        points.append("関係性が崩れる直前の空気が濃い")
+        points.append("バレたら終わり、の緊張感が主軸")
     if item.discount_percent is not None:
         points.append(f"いま約{int(item.discount_percent)}%OFFで手が届きやすい")
     if item.review_average is not None:
@@ -248,7 +257,7 @@ def _fallback_article_html(item: FanzaItem) -> str:
 
 def _fallback_x_post_text(item: FanzaItem, *, article_url: str) -> str:
     """Gemini 失敗時のフック型 X 投稿文。"""
-    short_title = _sanitize_for_prompt(item.title)[:28]
+    short_title = _sanitize_for_x(item.title)[:28]
     if item.discount_percent is not None and item.discount_percent >= MIN_SALE_DISCOUNT_FOR_COPY:
         pct = int(item.discount_percent)
         discount_line = f"いま約{pct}%OFF。この値段なら買い得。"
@@ -265,73 +274,36 @@ def _fallback_x_post_text(item: FanzaItem, *, article_url: str) -> str:
     return _normalize_x_post(text, article_url=article_url)
 
 
-_HEADING_PREFIXES = (
-    "ひとことで言うと",
-    "第一印象",
-    "見どころポイント",
-    "見どころ",
-    "おすすめな人",
-    "ちょっと気になる点",
-    "まとめ",
-)
-_GENERIC_SUMMARY_MARKERS = (
-    "テンポと空気感が印象に残る",
-    "観ている途中でテンションが上がる",
-    "話題作をサクッとチェック",
-    "今夜の気分に合うかだけ先に",
-    "テイストが合うかどうかは好み次第",
-    "判断するのがおすすめ",
-)
-
-
 def _plain_text_from_html(raw_html: str) -> str:
     text = re.sub(r"<[^>]+>", " ", raw_html or "")
     return re.sub(r"\s+", " ", text).strip()
 
 
 def _summary_from_signals(item: FanzaItem, blob: str) -> str:
-    """汎用文しか無いときのカード用一文。"""
+    """カード用の短い編集要約。タイトルやジャンル列は出さない。"""
     hay = f"{item.title}\n{item.description}\n{blob}"
-    if any(k in hay for k in ("NTR", "寝取", "内緒", "禁断")):
-        return "禁断の関係性が軸。スリル寄りに観たい夜向け。"
+    if any(k in hay for k in ("NTR", "寝取", "内緒", "禁断", "好きピ")):
+        return "彼氏の前で崩れる背徳もの。見られる緊張感が欲しい夜向け。"
     if any(k in hay for k in ("デビュー", "Debut", "専属")):
-        return "新人専属の初々しさが売り。顔と空気感で選びたい人向け。"
-    if any(k in hay.lower() for k in ("vr", "ベスト", "総集編")):
-        return "分量と映像の密度で選ぶ一本。じっくり観たい日向け。"
-    return "公式の雰囲気を見てから選びたいタイプの一本。"
+        if any(k in hay for k in ("Hカップ", "巨乳", "爆乳", "グラマー")):
+            return "グラマー新人のデビュー。初々しさと身体のインパクトで選ぶ一本。"
+        return "専属新人のデビュー。顔と色気で選びたい人向け。"
+    if "VR" in hay or "vr" in hay.lower():
+        if any(k in hay for k in ("ベスト", "18時間", "8時間", "総集編")):
+            return "没入感の強いVRベスト。長く引っ張りたい夜向け。"
+        return "距離の近いVR。没入して観たい夜向け。"
+    if any(k in hay for k in ("ベスト", "総集編")):
+        return "長回しで選んで観られるベスト。気分で場面を変えたい夜向け。"
+    return "公式の肌感と声を見てから選びたい一本。"
 
 
 def extract_card_summary(article_html_body: str, item: FanzaItem) -> str:
-    """記事 HTML からカード用の短い要約を抽出する。"""
-    paragraphs = re.findall(
-        r"<p[^>]*>(.*?)</p>",
-        article_html_body or "",
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    candidates: list[str] = []
-    for raw in paragraphs:
-        text = _plain_text_from_html(raw)
-        for heading in _HEADING_PREFIXES:
-            if text.startswith(heading):
-                text = text[len(heading):].strip()
-        if item.title:
-            quoted = f"「{item.title}」"
-            if text.startswith(quoted):
-                text = text[len(quoted):].lstrip("は、です。 ").strip()
-            elif item.title in text:
-                text = text.replace(item.title, "").strip(" 「」『』は、")
-        text = re.sub(r"本作『』", "本作", text)
-        text = re.sub(r"『』", "", text)
-        text = re.sub(r"\s+", " ", text).strip(" 、。")
-        if text.startswith("ジャンル:") or text.startswith("出演:"):
-            continue
-        if len(text) < 18:
-            continue
-        if any(marker in text for marker in _GENERIC_SUMMARY_MARKERS):
-            continue
-        candidates.append(text)
-    if candidates:
-        return candidates[0][:90]
+    """
+    カード用要約。
+
+    HTMLの切り出しは使わず、作品信号から短い一文を作る。
+    タイトル全文・ジャンル列・空欄を出さない。
+    """
     blob = _plain_text_from_html(article_html_body)
     return _summary_from_signals(item, blob)
 
@@ -342,12 +314,12 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
 
     返却値は section 要素を中心とした HTML 断片（ページテンプレートに埋め込む）。
     """
-    context = _build_item_context(item, sanitized=True)
+    context = _build_item_context(item, for_x=False)
     system_prompt = _load_prompt_file("article.txt")
     user_prompt = (
-        "この作品の魅力を、実際に見たかのように感情豊かに、自然な日本語でレビューして。"
-        "タイトル全文は繰り返さない。具体的な空気感と、どんな人にオススメかを盛り込んで。"
-        "見出しは指定どおりに、見どころポイントとおすすめな人を分かりやすく整理して。\n\n"
+        "この作品を観た人の口調で、エロ寄りのレビューにして。"
+        "タイトル全文は繰り返さない。シチュと肌の距離感を具体的に。"
+        "見出しは指定どおり。\n\n"
         f"{context}"
     )
     logger.info("Gemini: 記事 HTML 生成を開始 content_id=%s model=%s", item.content_id, MODEL_NAME)
@@ -356,6 +328,7 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
         system_prompt=system_prompt,
         user_prompt=user_prompt,
         temperature=0.85,
+        adult_ok=True,
     )
     html_body = _strip_code_fence(content)
     if not html_body:
@@ -364,9 +337,9 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
             item.content_id,
         )
         retry_prompt = (
-            "次の作品を観た人の口調で HTML レビューにして。"
+            "次の作品を観た人の口調で、エロ寄りの HTML レビューにして。"
             "見出しは ひとことで言うと / 見どころポイント / おすすめな人 / ちょっと気になる点 / まとめ。"
-            "過激表現なし。\n\n"
+            "未成年連想は禁止。タイトル全文は繰り返さない。\n\n"
             f"{context}"
         )
         content = _generate_text(
@@ -374,6 +347,7 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
             system_prompt=system_prompt,
             user_prompt=retry_prompt,
             temperature=0.5,
+            adult_ok=True,
         )
         html_body = _strip_code_fence(content)
 
@@ -427,7 +401,7 @@ def generate_x_post_text(client: genai.Client, item: FanzaItem, *, cushion_page_
     cushion_page_url は個別記事のフルURL（トップではなく article_*.html）。
     """
     article_url = cushion_page_url
-    context = _build_item_context(item, sanitized=True)
+    context = _build_item_context(item, for_x=True)
     discount_line = "割引情報がない場合は『今見ておく価値あり』と書いてください。"
     if item.discount_percent is not None:
         pct = int(item.discount_percent)
