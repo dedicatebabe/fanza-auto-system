@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.4.0
+# Version: 2.5.0
 # Date: 2026-09-13
-# Summary: 記事見出しを短い英語に統一
+# Summary: フォールバックもエロ動画レビューにする
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -207,39 +207,48 @@ def _generate_text(
 
 
 def _fallback_hook(item: FanzaItem) -> str:
-    """作品属性から、タイトルを繰り返さない導入文を作る。"""
+    """作品属性から、何が抜けるかを書く導入文。"""
     blob = f"{item.title}\n{item.description}"
     if any(k in blob for k in ("NTR", "寝取", "内緒", "禁断")):
-        return "彼氏や恋人の前で崩れる背徳もの。見られてる緊張感が欲しい夜向け。"
+        return "彼氏や恋人の前で彼女が他の男に抱かれる背徳もの。見られるスリルで抜きたい夜向け。"
     if any(k in blob for k in ("デビュー", "Debut", "専属")):
-        return "専属新人の初々しさと身体のインパクトが売り。顔と色気で選びたい一本。"
-    if any(k in blob for k in ("VR", "ベスト", "総集編", "8時間", "18時間")):
-        return "長回しで没入できる密度の高い一本。何度も引っ張りたい夜向け。"
-    return "煽りタイトルより、肌の距離感と声で判断したいタイプ。"
+        return "専属新人の初撮り。顔と身体が初めてカメラの前で乱れるのを観る一本。"
+    if any(k in blob for k in ("VR", "8K")):
+        return "目の前で密着されるVR。吐息と胸の距離感で抜きたい人向け。"
+    return "タイトルのシチュで抜けるかどうか、身体と行為の方向を見て選ぶ一本。"
 
 
 def _fallback_article_html(item: FanzaItem) -> str:
-    """Gemini 失敗時のテンプレート HTML。"""
+    """Gemini 失敗時のエロ動画レビュー HTML。価格は見どころに入れない。"""
+    blob = f"{item.title}\n{item.description}"
     hook = html.escape(_fallback_hook(item))
     points: list[str] = []
-    if any(k in item.title for k in ("VR", "8K")):
-        points.append("没入感の強い画角で、距離の近さが売り")
-    if any(k in f"{item.title}{item.description}" for k in ("ベスト", "総集編")):
-        points.append("長回しで観られるので、その日の気分で場面を選べる")
-    if any(k in item.description for k in ("専属", "単体", "デビュー")):
-        points.append("一人に寄った作りで、顔と声の印象が残りやすい")
-    if any(k in f"{item.title}{item.description}" for k in ("NTR", "寝取", "内緒")):
-        points.append("バレたら終わり、の緊張感が主軸")
-    if item.discount_percent is not None:
-        points.append(f"いま約{int(item.discount_percent)}%OFFで手が届きやすい")
-    if item.review_average is not None:
-        points.append(
-            f"レビュー平均 {item.review_average}（{item.review_count or 0}件）"
-        )
+    if any(k in blob for k in ("NTR", "寝取", "内緒")):
+        points.append("好きな人の目の前で崩れるNTR")
+    if any(k in blob for k in ("中出し", "生ハメ")):
+        points.append("生で中までいく展開")
+    if any(k in blob for k in ("Hカップ", "巨乳", "爆乳", "美乳")):
+        points.append("胸の圧が主軸。寄りの画が強い")
+    if any(k in blob for k in ("水着", "ビーチ", "ビキニ")):
+        points.append("水着のまま熱が上がる")
+    if any(k in blob for k in ("VR", "8K")):
+        points.append("目の前のキスと密着。VR向きの距離")
+    if any(k in blob for k in ("ベスト", "総集編")):
+        points.append("場面を飛ばして、今抜きたいシチュだけ観られる")
+    if any(k in blob for k in ("デビュー", "Debut", "専属")):
+        points.append("初めて乱れる顔。初物感で抜く")
+    if any(k in blob for k in ("潮吹", "3P", "4P")):
+        points.append("清楚だけで終わらない。複数や潮吹きの方向もある")
     while len(points) < 3:
-        points.append("公式ページの紹介写真で、自分の好みか確認しやすい")
+        points.append("公式のサンプルで、顔・胸・シチュを確認してからでいい")
     lis = "\n  ".join(f"<li>{html.escape(p)}</li>" for p in points[:5])
-    desc = html.escape(item.description).replace("\n", "<br>")
+    who = "今夜これで抜けるか、シチュと身体で選びたい人。"
+    if any(k in blob for k in ("NTR", "寝取")):
+        who = "寝取られと生が欲しい夜。純愛はいらない人。"
+    elif any(k in blob for k in ("デビュー", "Debut")):
+        who = "新人の初々しさで抜きたい人。顔と胸を確認しに行く用。"
+    elif "VR" in blob:
+        who = "VRで目の前の女に密着して抜きたい人。"
     return f"""<h2>In a nutshell</h2>
 <p>{hook}</p>
 <h2>Highlights</h2>
@@ -247,11 +256,11 @@ def _fallback_article_html(item: FanzaItem) -> str:
   {lis}
 </ul>
 <h2>Who it's for</h2>
-<p>今夜の気分に合うかだけ先に見て、気になったら公式で詳細を確認したい人向け。</p>
+<p>{html.escape(who)}</p>
 <h2>One caveat</h2>
-<p>タイトルの煽りと中身の温度感がずれることもある。予告と作画を見てからで十分。</p>
+<p>タイトルが盛ってることもある。サンプルの肌と声を見てからでいい。</p>
 <h2>Wrap-up</h2>
-<p>{desc}</p>
+<p>抜けるシチュかどうかだけ見て、公式へ。</p>
 """
 
 
@@ -283,15 +292,15 @@ def _summary_from_signals(item: FanzaItem, blob: str) -> str:
     """カード用の短い編集要約。タイトルやジャンル列は出さない。"""
     hay = f"{item.title}\n{item.description}\n{blob}"
     if any(k in hay for k in ("NTR", "寝取", "内緒", "禁断", "好きピ")):
-        return "彼氏の前で崩れる背徳もの。見られる緊張感が欲しい夜向け。"
+        return "彼氏の前で生のNTR。見られながら中出しまでいく背徳もの。"
     if any(k in hay for k in ("デビュー", "Debut", "専属")):
         if any(k in hay for k in ("Hカップ", "巨乳", "爆乳", "グラマー")):
-            return "グラマー新人のデビュー。初々しさと身体のインパクトで選ぶ一本。"
-        return "専属新人のデビュー。顔と色気で選びたい人向け。"
+            return "Hカップ新人の初撮り。清楚顔が乱れるのを観る一本。"
+        return "専属新人の初撮り。顔と身体の初物感で抜く一本。"
     if "VR" in hay or "vr" in hay.lower():
         if any(k in hay for k in ("ベスト", "18時間", "8時間", "総集編")):
-            return "没入感の強いVRベスト。長く引っ張りたい夜向け。"
-        return "距離の近いVR。没入して観たい夜向け。"
+            return "8K VRベスト。目の前で密着して、場面を選んで抜く用。"
+        return "目の前で密着するVR。吐息と胸の距離で抜きたい夜向け。"
     if any(k in hay for k in ("ベスト", "総集編")):
         return "長回しで選んで観られるベスト。気分で場面を変えたい夜向け。"
     return "公式の肌感と声を見てから選びたい一本。"
@@ -317,8 +326,8 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
     context = _build_item_context(item, for_x=False)
     system_prompt = _load_prompt_file("article.txt")
     user_prompt = (
-        "この作品を観た人の口調で、エロ寄りのレビューにして。"
-        "タイトル全文は繰り返さない。シチュと肌の距離感を具体的に。"
+        "エロ動画レビューとして、何が抜けるかを具体的に書いて。"
+        "タイトル全文は繰り返さない。価格を見どころに入れるな。"
         "見出しは指定どおり。\n\n"
         f"{context}"
     )
