@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.3.0
+# Version: 2.4.0
 # Date: 2026-09-13
-# Summary: 気分タグ付与と記事ページ早期CTAに対応
+# Summary: 既存カード再抽出オプションを追加
 # ==========================================
 """
 FANZA（DMM API v3）のセール・人気作品を取得し、
@@ -28,7 +28,11 @@ from modules.ai_generator import (
 )
 from modules.dmm_api import FetchMode, fetch_fanza_item_for_posting
 from modules.moods import infer_moods
-from modules.page_builder import build_cushion_page_url, write_article_and_update_index
+from modules.page_builder import (
+    build_cushion_page_url,
+    refresh_published_cards,
+    write_article_and_update_index,
+)
 from modules.x_poster import post_to_x
 
 POSTED_JSON = "posted.json"
@@ -119,6 +123,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="X 投稿前のランダム待機をスキップ（デバッグ用）",
     )
+    parser.add_argument(
+        "--refresh-index",
+        action="store_true",
+        help="既存記事のカード要約と気分タグだけ再生成する",
+    )
     return parser.parse_args()
 
 
@@ -131,6 +140,12 @@ def main() -> int:
     load_dotenv(root / ".env")
 
     try:
+        if args.refresh_index:
+            pages_base = require_env("BASE_URL")
+            count = refresh_published_cards(github_pages_base_url=pages_base)
+            logger.info("カード再生成が完了しました（%s件）", count)
+            return 0
+
         dmm_api_id = require_env("DMM_API_ID")
         dmm_affiliate_id = require_env("DMM_AFFILIATE_ID")
         gemini_key = require_env("GEMINI_API_KEY")

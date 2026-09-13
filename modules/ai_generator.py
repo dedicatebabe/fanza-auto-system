@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.1.0
+# Version: 2.2.0
 # Date: 2026-09-13
-# Summary: フック型多行X投稿とレビュー構成プロンプト連携
+# Summary: サニタイズ緩和とカード要約の抽出精度を改善
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -64,27 +64,38 @@ def _format_price_yen(amount: int | None) -> str:
     return f"{amount:,}円"
 
 
-def _sanitize_for_prompt(text: str) -> str:
-    """セーフティフィルタ回避のため、露骨な表現をプロンプト用に置換する。"""
+def _sanitize_for_prompt(text: str, *, max_len: int = 400) -> str:
+    """セーフティフィルタ回避のため、露骨な表現だけを穏やかな語に置換する。"""
     cleaned = text
     replacements = (
-        (r"[●○★☆]+", ""),
+        (r"[●○★☆]{2,}", ""),
         (r"レ[●\*xXｘＸ]プ", "過激な展開"),
-        (r"ちん[ぽポ]|デカチン|射精|中出し|絶頂|性交|挿入", "…"),
-        (r"おっぱい|巨乳|美乳|裸|ヌード|エロ", "…"),
-        (r"フェラ|パイズリ|手コキ|脚コキ|おま[●\*]|まん[●\*]", "…"),
-        (r"レズ|NTR|キメセク|緊縛|アナル", "ドラマチックな展開"),
+        (r"デカチン|デカマラ|ちん[ぽポ]", "刺激的な展開"),
+        (r"連続射精|大量精子|中出し|生ハメ|筆おろし", "禁断寄りの展開"),
+        (r"射精|絶頂|性交|挿入", "密着した展開"),
+        (r"フェラ|パイズリ|手コキ|脚コキ|おま[●\*]|まん[●\*]", "濃厚な密着"),
+        (r"ドピュドピュ|暴発", ""),
+        (r"おっぱい|裸|ヌード", "肌の露出"),
+        (r"巨乳|爆乳|美乳|Hカップ", "グラマー"),
+        (r"NTR|寝取り・寝取られ・NTR|寝取られ", "禁断の三角関係"),
+        (r"キメセク", "危険な誘惑"),
+        (r"緊縛", "拘束プレイ"),
+        (r"アナル", "ディープな展開"),
     )
     for pattern, repl in replacements:
         cleaned = re.sub(pattern, repl, cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    return cleaned[:200] if cleaned else "人気エンタメ作品"
+    return cleaned[:max_len] if cleaned else "人気エンタメ作品"
 
 
 def _build_item_context(item: FanzaItem, *, sanitized: bool = True) -> str:
     """プロンプト用の作品情報テキストを組み立てる。"""
-    title = _sanitize_for_prompt(item.title) if sanitized else item.title
-    description = _sanitize_for_prompt(item.description) if sanitized else item.description
+    title = _sanitize_for_prompt(item.title, max_len=80) if sanitized else item.title
+    description = (
+        _sanitize_for_prompt(item.description, max_len=500)
+        if sanitized
+        else item.description
+    )
     lines = [
         f"タイトル: {title}",
         f"content_id: {item.content_id}",
@@ -186,34 +197,50 @@ def _generate_text(
     return _extract_response_text(response)
 
 
+def _fallback_hook(item: FanzaItem) -> str:
+    """作品属性から、タイトルを繰り返さない導入文を作る。"""
+    blob = f"{item.title}\n{item.description}"
+    if any(k in blob for k in ("NTR", "寝取", "内緒", "禁断")):
+        return "禁断の関係性が軸の一本。スリル寄りに観たい夜向け。"
+    if any(k in blob for k in ("デビュー", "Debut", "専属")):
+        return "新人専属の初々しさが前面に出ている。顔と空気感で選びたい人向け。"
+    if any(k in blob for k in ("VR", "ベスト", "総集編", "8時間", "18時間")):
+        return "分量と映像の密度で押してくる作品。じっくり選びたい日に向いている。"
+    return "公式の紹介を見て好みが分かれるタイプ。雰囲気重視で選びたい一本。"
+
+
 def _fallback_article_html(item: FanzaItem) -> str:
     """Gemini 失敗時のテンプレート HTML。"""
-    title = html.escape(item.title)
-    price = html.escape(_format_price_yen(item.sale_price))
-    discount = ""
+    hook = html.escape(_fallback_hook(item))
+    points: list[str] = []
+    if any(k in item.title for k in ("VR", "8K")):
+        points.append("没入感の強い画角で、距離の近さが売り")
+    if any(k in f"{item.title}{item.description}" for k in ("ベスト", "総集編")):
+        points.append("長回しで観られるので、その日の気分で場面を選べる")
+    if any(k in item.description for k in ("専属", "単体", "デビュー")):
+        points.append("一人に寄った作りで、顔と声の印象が残りやすい")
+    if any(k in f"{item.title}{item.description}" for k in ("NTR", "寝取", "内緒")):
+        points.append("関係性が崩れる直前の空気が濃い")
     if item.discount_percent is not None:
-        discount = f"<li>いま約{int(item.discount_percent)}%OFFで手が届きやすい</li>"
-    review = ""
+        points.append(f"いま約{int(item.discount_percent)}%OFFで手が届きやすい")
     if item.review_average is not None:
-        review = (
-            f"<li>レビュー平均 {item.review_average}"
-            f"（{item.review_count or 0}件）</li>"
+        points.append(
+            f"レビュー平均 {item.review_average}（{item.review_count or 0}件）"
         )
+    while len(points) < 3:
+        points.append("公式ページの紹介写真で、自分の好みか確認しやすい")
+    lis = "\n  ".join(f"<li>{html.escape(p)}</li>" for p in points[:5])
     desc = html.escape(item.description).replace("\n", "<br>")
     return f"""<h2>ひとことで言うと</h2>
-<p>「{title}」は、テンポと空気感が印象に残る一本。観ている途中でテンションが上がるタイプです。</p>
+<p>{hook}</p>
 <h2>見どころポイント</h2>
 <ul>
-  <li>導入のテンポが良く、飽きにくい</li>
-  <li>シチュエーションの熱量が伝わりやすい</li>
-  <li>販売価格: {price}</li>
-  {discount}
-  {review}
+  {lis}
 </ul>
 <h2>おすすめな人</h2>
-<p>話題作をサクッとチェックしたい人、セール中に「当たり」を引きたい人向け。</p>
+<p>今夜の気分に合うかだけ先に見て、気になったら公式で詳細を確認したい人向け。</p>
 <h2>ちょっと気になる点</h2>
-<p>テイストが合うかどうかは好み次第。まずは公式の紹介と作画・雰囲気を見て判断するのがおすすめです。</p>
+<p>タイトルの煽りと中身の温度感がずれることもある。予告と作画を見てからで十分。</p>
 <h2>まとめ</h2>
 <p>{desc}</p>
 """
@@ -238,13 +265,75 @@ def _fallback_x_post_text(item: FanzaItem, *, article_url: str) -> str:
     return _normalize_x_post(text, article_url=article_url)
 
 
+_HEADING_PREFIXES = (
+    "ひとことで言うと",
+    "第一印象",
+    "見どころポイント",
+    "見どころ",
+    "おすすめな人",
+    "ちょっと気になる点",
+    "まとめ",
+)
+_GENERIC_SUMMARY_MARKERS = (
+    "テンポと空気感が印象に残る",
+    "観ている途中でテンションが上がる",
+    "話題作をサクッとチェック",
+    "今夜の気分に合うかだけ先に",
+    "テイストが合うかどうかは好み次第",
+    "判断するのがおすすめ",
+)
+
+
+def _plain_text_from_html(raw_html: str) -> str:
+    text = re.sub(r"<[^>]+>", " ", raw_html or "")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _summary_from_signals(item: FanzaItem, blob: str) -> str:
+    """汎用文しか無いときのカード用一文。"""
+    hay = f"{item.title}\n{item.description}\n{blob}"
+    if any(k in hay for k in ("NTR", "寝取", "内緒", "禁断")):
+        return "禁断の関係性が軸。スリル寄りに観たい夜向け。"
+    if any(k in hay for k in ("デビュー", "Debut", "専属")):
+        return "新人専属の初々しさが売り。顔と空気感で選びたい人向け。"
+    if any(k in hay.lower() for k in ("vr", "ベスト", "総集編")):
+        return "分量と映像の密度で選ぶ一本。じっくり観たい日向け。"
+    return "公式の雰囲気を見てから選びたいタイプの一本。"
+
+
 def extract_card_summary(article_html_body: str, item: FanzaItem) -> str:
     """記事 HTML からカード用の短い要約を抽出する。"""
-    text = re.sub(r"<[^>]+>", " ", article_html_body or "")
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text:
-        return _sanitize_for_prompt(item.title)[:80]
-    return text[:110]
+    paragraphs = re.findall(
+        r"<p[^>]*>(.*?)</p>",
+        article_html_body or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    candidates: list[str] = []
+    for raw in paragraphs:
+        text = _plain_text_from_html(raw)
+        for heading in _HEADING_PREFIXES:
+            if text.startswith(heading):
+                text = text[len(heading):].strip()
+        if item.title:
+            quoted = f"「{item.title}」"
+            if text.startswith(quoted):
+                text = text[len(quoted):].lstrip("は、です。 ").strip()
+            elif item.title in text:
+                text = text.replace(item.title, "").strip(" 「」『』は、")
+        text = re.sub(r"本作『』", "本作", text)
+        text = re.sub(r"『』", "", text)
+        text = re.sub(r"\s+", " ", text).strip(" 、。")
+        if text.startswith("ジャンル:") or text.startswith("出演:"):
+            continue
+        if len(text) < 18:
+            continue
+        if any(marker in text for marker in _GENERIC_SUMMARY_MARKERS):
+            continue
+        candidates.append(text)
+    if candidates:
+        return candidates[0][:90]
+    blob = _plain_text_from_html(article_html_body)
+    return _summary_from_signals(item, blob)
 
 
 def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
@@ -257,7 +346,7 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
     system_prompt = _load_prompt_file("article.txt")
     user_prompt = (
         "この作品の魅力を、実際に見たかのように感情豊かに、自然な日本語でレビューして。"
-        "AIっぽさを減らすため、具体的なシーンや、どんな人にオススメかを盛り込んで。"
+        "タイトル全文は繰り返さない。具体的な空気感と、どんな人にオススメかを盛り込んで。"
         "見出しは指定どおりに、見どころポイントとおすすめな人を分かりやすく整理して。\n\n"
         f"{context}"
     )

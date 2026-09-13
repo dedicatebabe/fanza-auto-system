@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.1.0
+# Version: 1.2.0
 # Date: 2026-09-13
-# Summary: sale は rank 取得＋割引率フィルタ（price ソートではセール検出不可）
+# Summary: deliveries 価格も拾い、セール判定の欠落を減らす
 # ==========================================
 """DMM アフィリエイト API v3 連携モジュール。"""
 
@@ -124,6 +124,17 @@ def _normalize_item(raw: dict[str, Any]) -> FanzaItem | None:
     prices = raw.get("prices") or {}
     sale_price = _parse_yen(prices.get("price"))
     list_price = _parse_yen(prices.get("list_price"))
+    deliveries = prices.get("deliveries") or {}
+    delivery = deliveries.get("delivery") if isinstance(deliveries, dict) else deliveries
+    if isinstance(delivery, dict):
+        delivery = [delivery]
+    if isinstance(delivery, list):
+        for row in delivery:
+            if not isinstance(row, dict):
+                continue
+            parsed = _parse_yen(row.get("price"))
+            if parsed is not None and sale_price is None:
+                sale_price = parsed
     if list_price is None and sale_price is not None:
         list_price = sale_price
 

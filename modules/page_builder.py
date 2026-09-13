@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.3.0
+# Version: 2.4.0
 # Date: 2026-09-13
-# Summary: 気分チップ絞り込みと早期CTA対応
+# Summary: カード要約再抽出と価格表示の欠落を補う
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -15,8 +15,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from modules.ai_generator import extract_card_summary
 from modules.dmm_api import FanzaItem
-from modules.moods import MOOD_OPTIONS, infer_moods
+from modules.moods import MOOD_OPTIONS, infer_moods, infer_moods_from_text
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +66,15 @@ def build_cushion_page_url(base_url: str, content_id: str) -> str:
 
 
 def _format_price_display(item: FanzaItem) -> str:
-    if item.sale_price is None:
-        return "価格は公式サイトでご確認ください"
-    if item.list_price and item.list_price > item.sale_price:
+    if item.list_price and item.sale_price and item.list_price > item.sale_price:
         return f"定価 {item.list_price:,}円 → 今 {item.sale_price:,}円"
-    return f"{item.sale_price:,}円"
+    if item.sale_price is not None:
+        return f"{item.sale_price:,}円"
+    if item.list_price is not None and item.discount_percent is not None:
+        return f"定価 {item.list_price:,}円 / 約{int(item.discount_percent)}%OFF"
+    if item.discount_percent is not None:
+        return f"いま約{int(item.discount_percent)}%OFF"
+    return "価格は公式サイトでご確認ください"
 
 
 def _load_template(name: str) -> str:
@@ -91,7 +96,7 @@ def _plain_summary_from_html(article_html_body: str, fallback: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         text = fallback
-    return text[:120]
+    return text[:90]
 
 
 def _load_index_entries(docs_path: Path) -> list[IndexEntry]:
@@ -155,10 +160,12 @@ def _render_article_page(
     article_html_body: str,
     *,
     pages_base_url: str,
+    summary: str = "",
 ) -> str:
     """個別記事 HTML をテンプレートから生成する。"""
     page_title = html.escape(item.title)
-    description_meta = html.escape(item.description.replace("\n", " ")[:160])
+    meta_source = (summary or item.description.replace("\n", " ")).strip()
+    description_meta = html.escape(meta_source[:160])
     image = html.escape(item.image_url) if item.image_url else ""
     affiliate = html.escape(item.affiliate_url, quote=True)
     canonical = html.escape(build_cushion_page_url(pages_base_url, item.content_id))
@@ -293,6 +300,7 @@ def write_article_and_update_index(
         item,
         article_html_body,
         pages_base_url=github_pages_base_url,
+        summary=card_summary,
     )
     article_path.write_text(page_html, encoding="utf-8")
     logger.info("記事 HTML を出力: %s", article_path)
@@ -316,3 +324,77 @@ def write_article_and_update_index(
     (docs_path / "index.html").write_text(index_html, encoding="utf-8")
     logger.info("index.html を更新しました（件数=%s moods=%s）", len(entries), mood_tags)
     return article_path
+
+
+def _article_body_fragment(article_html: str) -> str:
+    """公開済み記事からレビュー本文だけを取り出す。"""
+    match = re.search(
+        r'<div class="content">(.*?)</div>\s*<div class="cta-panel">',
+        article_html,
+        flags=re.DOTALL,
+    )
+    if match:
+        return match.group(1).strip()
+    return article_html
+
+
+def refresh_published_cards(*, github_pages_base_url: str) -> int:
+    """
+    既存記事からカード要約と気分タグを再抽出し、index.html を更新する。
+
+    戻り値: 更新した件数
+    """
+    docs_path = docs_dir()
+    entries = _load_index_entries(docs_path)
+    if not entries:
+        logger.warning("更新対象の記事がありません。")
+        return 0
+
+    refreshed: list[IndexEntry] = []
+    for entry in entries:
+        article_path = docs_path / entry.article_filename
+        if not article_path.exists():
+            refreshed.append(entry)
+            continue
+        page_html = article_path.read_text(encoding="utf-8")
+        body = _article_body_fragment(page_html)
+        stub = FanzaItem(
+            content_id=entry.content_id,
+            title=entry.title,
+            image_url=entry.image_url,
+            affiliate_url="",
+            list_price=None,
+            sale_price=None,
+            discount_percent=30.0 if "セール特価" in entry.moods else None,
+            review_average=None,
+            review_count=None,
+            description=body,
+        )
+        summary = extract_card_summary(body, stub)
+        moods = infer_moods_from_text(
+            f"{entry.title}\n{body}\n{summary}",
+            discount_percent=stub.discount_percent,
+        )
+        refreshed.append(
+            IndexEntry(
+                content_id=entry.content_id,
+                title=entry.title,
+                article_filename=entry.article_filename,
+                created_at=entry.created_at,
+                image_url=entry.image_url,
+                summary=summary,
+                moods=moods,
+            )
+        )
+        logger.info(
+            "カード更新 content_id=%s moods=%s summary=%s",
+            entry.content_id,
+            moods,
+            summary[:40],
+        )
+
+    _save_index_entries(docs_path, refreshed)
+    index_html = _render_index_page(refreshed, pages_base_url=github_pages_base_url)
+    (docs_path / "index.html").write_text(index_html, encoding="utf-8")
+    logger.info("index.html を再生成しました（件数=%s）", len(refreshed))
+    return len(refreshed)
