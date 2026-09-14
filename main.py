@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.6.0
+# Version: 2.7.0
 # Date: 2026-09-14
-# Summary: Xは本ツイ＋FANZA公式リプ。レビュー誘導をやめる
+# Summary: Xは紹介ページ＋ジャケット画像。FANZA直リンクは出さない
 # ==========================================
 """
 FANZA（DMM API v3）のセール・人気作品を取得し、
@@ -25,7 +25,6 @@ from modules.ai_generator import (
     extract_card_summary,
     generate_article_html,
     generate_x_post_text,
-    generate_x_reply_text,
 )
 from modules.dmm_api import FetchMode, fetch_fanza_item_for_posting
 from modules.moods import infer_moods
@@ -173,7 +172,7 @@ def main() -> int:
             skip_content_ids=skip_ids,
         )
 
-        # X にはトップではなく個別記事フルURLを載せる（クリック1回でレビューへ）
+        # X には FANZA 直リンクを置かず、紹介ページへ誘導する
         article_url = build_cushion_page_url(pages_base, item.content_id)
         logger.info("個別記事 URL: %s", article_url)
 
@@ -182,10 +181,12 @@ def main() -> int:
         card_summary = extract_card_summary(article_html, item)
         moods = infer_moods(item, summary=card_summary)
         logger.info("気分タグ: %s", moods)
-        tweet_text = generate_x_post_text(gemini_client, item)
-        reply_text = generate_x_reply_text(item)
+        tweet_text = generate_x_post_text(
+            gemini_client,
+            item,
+            cushion_page_url=article_url,
+        )
         logger.info("生成ツイート:\n%s", tweet_text)
-        logger.info("生成リプ:\n%s", reply_text)
 
         write_article_and_update_index(
             item,
@@ -198,7 +199,6 @@ def main() -> int:
         if args.dry_run:
             logger.info("dry-run: X 投稿と履歴更新をスキップしました。")
             logger.info("生成ツイート: %s", tweet_text)
-            logger.info("生成リプ: %s", reply_text)
             return 0
 
         if not all([x_api_key, x_api_secret, x_access_token, x_access_secret]):
@@ -211,7 +211,7 @@ def main() -> int:
             access_token=x_access_token,
             access_secret=x_access_secret,
             skip_sleep=args.skip_x_sleep,
-            reply_text=reply_text,
+            image_url=item.image_url,
         )
 
         now_iso = datetime.now(timezone.utc).isoformat()

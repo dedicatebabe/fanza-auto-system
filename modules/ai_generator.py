@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.9.0
+# Version: 2.10.0
 # Date: 2026-09-14
-# Summary: X本文からレビュー誘導を外し、公式はリプ用に分離
+# Summary: X本文は紹介ページURLのみ。FANZA直リンクは出さない
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 MODEL_NAME = "gemini-3.6-flash"
 MAX_TWEET_LENGTH = 280
 MIN_SALE_DISCOUNT_FOR_COPY = 30.0
-CTA_LINE = "👇公式はリプへ"
+CTA_LINE = "👇詳細はこちら"
 BANNED_X_HOOKS = (
     "マジでこの作品",
     "刺さる人には刺さりすぎてヤバい",
@@ -403,8 +403,8 @@ def _fallback_x_hook(item: FanzaItem) -> str:
     return _sanitize_for_x(line, max_len=40)
 
 
-def _fallback_x_post_text(item: FanzaItem) -> str:
-    """Gemini 失敗時のフック型 X 投稿文。URLは入れない。"""
+def _fallback_x_post_text(item: FanzaItem, *, page_url: str) -> str:
+    """Gemini 失敗時のフック型 X 投稿文。"""
     hook = _fallback_x_hook(item)
     short_title = _sanitize_for_x(item.title)[:28]
     if item.discount_percent is not None and item.discount_percent >= MIN_SALE_DISCOUNT_FOR_COPY:
@@ -416,9 +416,11 @@ def _fallback_x_post_text(item: FanzaItem) -> str:
         f"{hook}\n"
         f"{short_title}\n"
         f"{discount_line}\n"
+        f"{CTA_LINE}\n"
+        f"{page_url}\n"
         f"#FANZAおすすめ"
     )
-    return _normalize_x_post(text)
+    return _normalize_x_post(text, page_url=page_url)
 
 
 def _normalize_article_headings(raw_html: str) -> str:
@@ -487,9 +489,10 @@ def generate_article_html(item: FanzaItem, client: genai.Client | None = None) -
     return _normalize_article_headings(_template_article_html(item))
 
 
-def _normalize_x_post(text: str) -> str:
-    """多行フック投稿を正規化する。URLは本文に入れない。"""
+def _normalize_x_post(text: str, *, page_url: str) -> str:
+    """多行フック投稿を正規化し、紹介ページURLを末尾に固定する。"""
     cleaned = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    cleaned = cleaned.replace(page_url, "").strip()
     cleaned = re.sub(r"[ \t]+", " ", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     lines = [ln.strip() for ln in cleaned.split("\n") if ln.strip()]
@@ -499,6 +502,9 @@ def _normalize_x_post(text: str) -> str:
         if CTA_LINE not in ln
         and not ln.startswith("http")
         and "詳しいレビュー" not in ln
+        and "fanza.co.jp" not in ln.lower()
+        and "dmm.co.jp" not in ln.lower()
+        and "al.fanza.co.jp" not in ln.lower()
     ]
 
     body_lines: list[str] = []
@@ -517,32 +523,34 @@ def _normalize_x_post(text: str) -> str:
     body = "\n".join(body_lines).strip()
     unique_tags = list(dict.fromkeys(tag_tokens))[:2]
     tags = " ".join(unique_tags).strip()
-    result = "\n".join(p for p in (body, tags) if p).strip()
+    parts = [body, CTA_LINE, page_url]
+    if tags:
+        parts.append(tags)
+    result = "\n".join(p for p in parts if p).strip()
     if len(result) <= MAX_TWEET_LENGTH:
         return result
-    return result[: MAX_TWEET_LENGTH - 1].rstrip() + "…"
-
-
-def generate_x_reply_text(item: FanzaItem) -> str:
-    """リプ用。FANZAのアフィリエイトURLだけ置く（ジャケットカード用）。"""
-    url = (item.affiliate_url or "").strip()
-    if not url:
-        raise ValueError("affiliate_url が空です。")
-    return f"広告\n{url}"
+    suffix = f"{CTA_LINE}\n{page_url}"
+    if tags:
+        suffix = f"{suffix}\n{tags}"
+    allowed = MAX_TWEET_LENGTH - len(suffix) - 1
+    if allowed < 20:
+        return suffix[:MAX_TWEET_LENGTH]
+    trimmed = body[: allowed - 1].rstrip() + "…"
+    return f"{trimmed}\n{suffix}".strip()
 
 
 def generate_x_post_text(
     client: genai.Client,
     item: FanzaItem,
     *,
-    cushion_page_url: str | None = None,
+    cushion_page_url: str,
 ) -> str:
     """
-    X 本ツイ用テキストを生成する（フック型・多行）。
+    X 投稿用テキストを生成する（フック型・多行）。
 
-    URLは入れない。公式リンクは generate_x_reply_text でリプに置く。
+    置くURLは紹介ページのみ。FANZA直リンクは入れない。
     """
-    _ = cushion_page_url
+    page_url = cushion_page_url
     context = _build_item_context(item, for_x=True)
     discount_line = "割引情報がない場合は『今見ておく価値あり』と書いてください。"
     if item.discount_percent is not None:
@@ -552,11 +560,12 @@ def generate_x_post_text(
     system_prompt = _load_prompt_file("x_post.txt")
     user_prompt = (
         "スクロールを止める強力なフック投稿を作って。"
-        "構成はプロンプト指定どおり。本文にURLを入れるな。"
-        "『刺さる』は使うな。語尾はこの作品のシチュで止めろ。\n"
-        f"{discount_line}\n\n"
+        "構成はプロンプト指定どおり。FANZAやDMMの直リンクは入れるな。"
+        "『刺さる』『詳しいレビュー』は使うな。語尾はこの作品のシチュで止めろ。\n"
+        f"{discount_line}\n"
+        f"紹介ページURL: {page_url}\n\n"
         f"作品情報:\n{context}\n\n"
-        f"文字数上限: {MAX_TWEET_LENGTH}。出力は投稿文のみ。"
+        f"文字数上限: {MAX_TWEET_LENGTH}（URL含む）。出力は投稿文のみ。"
     )
     logger.info("Gemini: X 投稿文生成を開始 content_id=%s model=%s", item.content_id, MODEL_NAME)
     text = _generate_text(
@@ -570,6 +579,6 @@ def generate_x_post_text(
             "Gemini: X 投稿文が空のためテンプレートを使用 content_id=%s",
             item.content_id,
         )
-        return _fallback_x_post_text(item)
+        return _fallback_x_post_text(item, page_url=page_url)
     text = _rewrite_generic_x_hook(text, item)
-    return _normalize_x_post(text)
+    return _normalize_x_post(text, page_url=page_url)
