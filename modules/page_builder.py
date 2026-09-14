@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.6.0
-# Date: 2026-09-13
-# Summary: UI文言を短い英語に揃え、既存記事を再出力
+# Version: 2.7.0
+# Date: 2026-09-14
+# Summary: 見出しとカード文言を日本人にもわかる英語に
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -243,7 +243,7 @@ def _render_card(entry: IndexEntry) -> str:
     href = html.escape(entry.article_filename)
     date_str = html.escape(entry.created_at[:10] if entry.created_at else "")
     summary = html.escape(entry.summary or "レビュー記事を見る")
-    moods = [m for m in entry.moods if m in MOOD_OPTIONS] or ["Quick"]
+    moods = [m for m in entry.moods if m in MOOD_OPTIONS] or ["Short"]
     moods_attr = html.escape(",".join(moods))
     search_blob = html.escape(
         f"{entry.title} {entry.summary} {' '.join(moods)}".lower()
@@ -266,7 +266,7 @@ def _render_card(entry: IndexEntry) -> str:
         f"<h3>{title}</h3>"
         f'<div class="mood-row">{mood_pills}</div>'
         f'<p class="summary">{summary}</p>'
-        f'<div class="more">Read review →</div>'
+        f'<div class="more">Read →</div>'
         f"</div></a>"
     )
 
@@ -289,14 +289,14 @@ def _render_index_page(entries: list[IndexEntry], *, pages_base_url: str) -> str
     if sorted_entries:
         cards = "\n".join(_render_card(e) for e in sorted_entries)
     else:
-        cards = '<p class="empty">No reviews yet. Check back after the next update.</p>'
+        cards = '<p class="empty">No review yet. Check after the next update.</p>'
 
     template = _load_template("index.html")
     return _apply_template(
         template,
         {
             "PAGE_TITLE": SITE_NAME,
-            "META_DESCRIPTION": "Short FANZA reviews. Read a bit, then open the official page.",
+            "META_DESCRIPTION": "Short FANZA review. Read a bit, then open FANZA.",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/"),
             "MOOD_FILTERS": _render_mood_filters(),
             "CARD_GRID": cards,
@@ -401,7 +401,7 @@ def refresh_published_cards(*, github_pages_base_url: str) -> int:
             list_price=list_price,
             sale_price=sale_price,
             discount_percent=discount if discount is not None else (
-                30.0 if "On sale" in entry.moods or "セール特価" in entry.moods else None
+                30.0 if any(m in entry.moods for m in ("Sale", "On sale", "セール特価")) else None
             ),
             review_average=None,
             review_count=None,

@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.3.0
-# Date: 2026-09-13
-# Summary: 気分タグの表示を短い英語に変更
+# Version: 1.4.0
+# Date: 2026-09-14
+# Summary: 気分タグを日本人にもわかる英語に
 # ==========================================
 """気分（mood）タグの定義と推定。"""
 
@@ -11,12 +11,12 @@ from modules.dmm_api import FanzaItem
 
 # 公式ジャンルのコピーではなく、編集メディア側の気分タグ
 MOOD_OPTIONS: tuple[str, ...] = (
-    "Sweet",
-    "Taboo",
-    "Quick",
+    "Love",
+    "NTR",
+    "Short",
     "Actress",
     "Story",
-    "On sale",
+    "Sale",
 )
 
 
@@ -34,9 +34,9 @@ def infer_moods_from_text(
     moods: list[str] = []
 
     if discount_percent is not None and discount_percent >= 30:
-        moods.append("On sale")
-    elif "セール" in blob or "%off" in blob or "% off" in blob or "％off" in blob or "on sale" in blob:
-        moods.append("On sale")
+        moods.append("Sale")
+    elif "セール" in blob or "%off" in blob or "% off" in blob or "％off" in blob or "on sale" in blob or "sale" in blob:
+        moods.append("Sale")
 
     is_haitoku = any(
         k in blob
@@ -60,13 +60,13 @@ def infer_moods_from_text(
         )
     )
     if is_haitoku:
-        moods.append("Taboo")
+        moods.append("NTR")
 
     if not is_haitoku and any(
         k in blob
-        for k in ("いちゃ", "いちゃラブ", "純愛", "甘め", "デート", "sweet")
+        for k in ("いちゃ", "いちゃラブ", "純愛", "甘め", "デート", "sweet", "love")
     ):
-        moods.append("Sweet")
+        moods.append("Love")
 
     if any(
         k in blob
@@ -82,7 +82,7 @@ def infer_moods_from_text(
             "1116分",
         )
     ):
-        moods.append("Quick")
+        moods.append("Short")
 
     if any(
         k in blob
@@ -97,7 +97,7 @@ def infer_moods_from_text(
         moods.append("Story")
 
     if not moods:
-        moods.append("Actress" if "出演" in blob else "Quick")
+        moods.append("Actress" if "出演" in blob else "Short")
 
     ordered: list[str] = []
     for mood in MOOD_OPTIONS:

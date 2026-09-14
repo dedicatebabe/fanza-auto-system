@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.5.0
-# Date: 2026-09-13
-# Summary: フォールバックもエロ動画レビューにする
+# Version: 2.6.0
+# Date: 2026-09-14
+# Summary: 見出し簡略化、日本語口調、X1行目の使い回し禁止
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -24,6 +24,18 @@ MODEL_NAME = "gemini-3.6-flash"
 MAX_TWEET_LENGTH = 280
 MIN_SALE_DISCOUNT_FOR_COPY = 30.0
 CTA_LINE = "👇画像付きの詳しいレビューと動画はこちら"
+BANNED_X_HOOKS = (
+    "マジでこの作品",
+    "刺さる人には刺さりすぎてヤバい",
+    "全男が好きなやつ来た",
+)
+ARTICLE_HEADING_FIXES = (
+    ("In a nutshell", "Review"),
+    ("Highlights", "Point"),
+    ("Who it's for", "For you"),
+    ("One caveat", "Note"),
+    ("Wrap-up", "Last"),
+)
 
 
 def create_gemini_client(api_key: str | None = None) -> genai.Client:
@@ -210,12 +222,12 @@ def _fallback_hook(item: FanzaItem) -> str:
     """作品属性から、何が抜けるかを書く導入文。"""
     blob = f"{item.title}\n{item.description}"
     if any(k in blob for k in ("NTR", "寝取", "内緒", "禁断")):
-        return "彼氏や恋人の前で彼女が他の男に抱かれる背徳もの。見られるスリルで抜きたい夜向け。"
+        return "彼氏の前で彼女が他の男に抱かれる。見られるスリルで抜く。"
     if any(k in blob for k in ("デビュー", "Debut", "専属")):
-        return "専属新人の初撮り。顔と身体が初めてカメラの前で乱れるのを観る一本。"
+        return "専属新人の初撮り。顔と身体が初めてカメラの前で乱れる。"
     if any(k in blob for k in ("VR", "8K")):
-        return "目の前で密着されるVR。吐息と胸の距離感で抜きたい人向け。"
-    return "タイトルのシチュで抜けるかどうか、身体と行為の方向を見て選ぶ一本。"
+        return "目の前で密着されるVR。吐息と胸の距離で抜く。"
+    return "シチュと身体を見て、今夜抜けるか決める。"
 
 
 def _fallback_article_html(item: FanzaItem) -> str:
@@ -228,7 +240,7 @@ def _fallback_article_html(item: FanzaItem) -> str:
     if any(k in blob for k in ("中出し", "生ハメ")):
         points.append("生で中までいく展開")
     if any(k in blob for k in ("Hカップ", "巨乳", "爆乳", "美乳")):
-        points.append("胸の圧が主軸。寄りの画が強い")
+        points.append("胸の寄りが強い。乳が画面に来る")
     if any(k in blob for k in ("水着", "ビーチ", "ビキニ")):
         points.append("水着のまま熱が上がる")
     if any(k in blob for k in ("VR", "8K")):
@@ -238,34 +250,54 @@ def _fallback_article_html(item: FanzaItem) -> str:
     if any(k in blob for k in ("デビュー", "Debut", "専属")):
         points.append("初めて乱れる顔。初物感で抜く")
     if any(k in blob for k in ("潮吹", "3P", "4P")):
-        points.append("清楚だけで終わらない。複数や潮吹きの方向もある")
+        points.append("清楚顔だけで終わらない。潮吹きや複数もある")
     while len(points) < 3:
-        points.append("公式のサンプルで、顔・胸・シチュを確認してからでいい")
+        points.append("公式のサンプルで、顔・胸・シチュを見てからでいい")
     lis = "\n  ".join(f"<li>{html.escape(p)}</li>" for p in points[:5])
     who = "今夜これで抜けるか、シチュと身体で選びたい人。"
     if any(k in blob for k in ("NTR", "寝取")):
         who = "寝取られと生が欲しい夜。純愛はいらない人。"
     elif any(k in blob for k in ("デビュー", "Debut")):
-        who = "新人の初々しさで抜きたい人。顔と胸を確認しに行く用。"
+        who = "新人の初々しさで抜きたい人。顔と胸を見て選べばいい。"
     elif "VR" in blob:
         who = "VRで目の前の女に密着して抜きたい人。"
-    return f"""<h2>In a nutshell</h2>
+    return f"""<h2>Review</h2>
 <p>{hook}</p>
-<h2>Highlights</h2>
+<h2>Point</h2>
 <ul>
   {lis}
 </ul>
-<h2>Who it's for</h2>
+<h2>For you</h2>
 <p>{html.escape(who)}</p>
-<h2>One caveat</h2>
+<h2>Note</h2>
 <p>タイトルが盛ってることもある。サンプルの肌と声を見てからでいい。</p>
-<h2>Wrap-up</h2>
+<h2>Last</h2>
 <p>抜けるシチュかどうかだけ見て、公式へ。</p>
 """
 
 
+def _fallback_x_hook(item: FanzaItem) -> str:
+    """作品ごとに変える X の1行目。定型文は使わない。"""
+    blob = f"{item.title}\n{item.description}"
+    if any(k in blob for k in ("NTR", "寝取", "内緒", "禁断")):
+        return "彼女が目の前で他の男にイかされるの、好きな人いるだろ"
+    if any(k in blob for k in ("VR", "8K")):
+        return "8Kで目の前に胸が来るVR、長いから飛ばして抜ける"
+    if any(k in blob for k in ("Hカップ", "巨乳", "爆乳")) and any(
+        k in blob for k in ("デビュー", "Debut", "専属")
+    ):
+        return "Hカップの新人、初撮りで胸が画面いっぱい"
+    if any(k in blob for k in ("デビュー", "Debut", "専属")):
+        return "専属新人の初撮り、顔も身体もまだ慣れてない"
+    if any(k in blob for k in ("水着", "ビーチ", "ビキニ")):
+        return "ビキニのまま崩れるやつ、野外の視線がエロい"
+    short = _sanitize_for_x(item.title, max_len=22)
+    return f"{short}、このシチュ好きなら刺さる"
+
+
 def _fallback_x_post_text(item: FanzaItem, *, article_url: str) -> str:
     """Gemini 失敗時のフック型 X 投稿文。"""
+    hook = _fallback_x_hook(item)
     short_title = _sanitize_for_x(item.title)[:28]
     if item.discount_percent is not None and item.discount_percent >= MIN_SALE_DISCOUNT_FOR_COPY:
         pct = int(item.discount_percent)
@@ -273,14 +305,35 @@ def _fallback_x_post_text(item: FanzaItem, *, article_url: str) -> str:
     else:
         discount_line = "今のうちにチェックしておくのが吉。"
     text = (
-        f"マジでこの作品、刺さる人には刺さりすぎてヤバい…\n"
-        f"{short_title}、熱量あるシチュ好きなら必見。\n"
+        f"{hook}\n"
+        f"{short_title}\n"
         f"{discount_line}\n"
         f"{CTA_LINE}\n"
         f"{article_url}\n"
         f"#FANZAおすすめ"
     )
     return _normalize_x_post(text, article_url=article_url)
+
+
+def _normalize_article_headings(raw_html: str) -> str:
+    """古い見出しが残っていたら、短い英語に置き換える。"""
+    html_body = raw_html or ""
+    for old, new in ARTICLE_HEADING_FIXES:
+        html_body = html_body.replace(f"<h2>{old}</h2>", f"<h2>{new}</h2>")
+        html_body = html_body.replace(f"<h2>{html.escape(old)}</h2>", f"<h2>{new}</h2>")
+    return html_body
+
+
+def _rewrite_generic_x_hook(text: str, item: FanzaItem) -> str:
+    """使い回しの1行目なら、作品専用のフックに差し替える。"""
+    lines = [ln for ln in (text or "").replace("\r\n", "\n").split("\n") if ln.strip()]
+    if not lines:
+        return text
+    first = lines[0]
+    if any(banned in first for banned in BANNED_X_HOOKS):
+        lines[0] = _fallback_x_hook(item)
+        return "\n".join(lines)
+    return text
 
 
 def _plain_text_from_html(raw_html: str) -> str:
@@ -292,18 +345,20 @@ def _summary_from_signals(item: FanzaItem, blob: str) -> str:
     """カード用の短い編集要約。タイトルやジャンル列は出さない。"""
     hay = f"{item.title}\n{item.description}\n{blob}"
     if any(k in hay for k in ("NTR", "寝取", "内緒", "禁断", "好きピ")):
-        return "彼氏の前で生のNTR。見られながら中出しまでいく背徳もの。"
+        if "VR" in hay or "vr" in hay.lower():
+            return "VRで彼女が目の前で寝取られる。交姦の現場にいる感じ。"
+        return "彼氏の前で生のNTR。見られながら中出し。"
     if any(k in hay for k in ("デビュー", "Debut", "専属")):
         if any(k in hay for k in ("Hカップ", "巨乳", "爆乳", "グラマー")):
-            return "Hカップ新人の初撮り。清楚顔が乱れるのを観る一本。"
-        return "専属新人の初撮り。顔と身体の初物感で抜く一本。"
+            return "Hカップ新人の初撮り。清楚顔が乱れる。"
+        return "専属新人の初撮り。顔と身体の初物感。"
     if "VR" in hay or "vr" in hay.lower():
         if any(k in hay for k in ("ベスト", "18時間", "8時間", "総集編")):
-            return "8K VRベスト。目の前で密着して、場面を選んで抜く用。"
-        return "目の前で密着するVR。吐息と胸の距離で抜きたい夜向け。"
+            return "8K VRベスト。目の前で密着。場面を選んで抜く。"
+        return "目の前で密着するVR。吐息と胸の距離。"
     if any(k in hay for k in ("ベスト", "総集編")):
-        return "長回しで選んで観られるベスト。気分で場面を変えたい夜向け。"
-    return "公式の肌感と声を見てから選びたい一本。"
+        return "長いベスト。気分で場面を変える。"
+    return "公式の肌と声を見てから選ぶ。"
 
 
 def extract_card_summary(article_html_body: str, item: FanzaItem) -> str:
@@ -327,8 +382,8 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
     system_prompt = _load_prompt_file("article.txt")
     user_prompt = (
         "エロ動画レビューとして、何が抜けるかを具体的に書いて。"
-        "タイトル全文は繰り返さない。価格を見どころに入れるな。"
-        "見出しは指定どおり。\n\n"
+        "友達に勧める日本語。タイトル全文は繰り返さない。価格を見どころに入れるな。"
+        "見出しは Review / Point / For you / Note / Last。\n\n"
         f"{context}"
     )
     logger.info("Gemini: 記事 HTML 生成を開始 content_id=%s model=%s", item.content_id, MODEL_NAME)
@@ -347,7 +402,7 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
         )
         retry_prompt = (
             "次の作品を観た人の口調で、エロ寄りの HTML レビューにして。"
-            "見出しは In a nutshell / Highlights / Who it's for / One caveat / Wrap-up。"
+            "見出しは Review / Point / For you / Note / Last。"
             "未成年連想は禁止。タイトル全文は繰り返さない。\n\n"
             f"{context}"
         )
@@ -365,8 +420,8 @@ def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
             "Gemini: 記事 HTML が空のためテンプレートを使用 content_id=%s",
             item.content_id,
         )
-        return _fallback_article_html(item)
-    return html_body
+        return _normalize_article_headings(_fallback_article_html(item))
+    return _normalize_article_headings(html_body)
 
 
 def _normalize_x_post(text: str, *, article_url: str) -> str:
@@ -438,6 +493,7 @@ def generate_x_post_text(client: genai.Client, item: FanzaItem, *, cushion_page_
             item.content_id,
         )
         return _fallback_x_post_text(item, article_url=article_url)
+    text = _rewrite_generic_x_hook(text, item)
     return _normalize_x_post(text, article_url=article_url)
 
 

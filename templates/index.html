@@ -1,3 +1,8 @@
+<!--
+Version: 2.7.0
+Date: 2026-09-14
+Summary: 見出しを日本人にもわかる英語に
+-->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -364,37 +369,37 @@
         <div class="brand-mark">夜</div>
         <div>
           <strong>Yoru no Libre X</strong>
-          <span>FANZA reviews</span>
+          <span>FANZA review</span>
         </div>
       </a>
-      <a class="nav-link" href="#reviews">Reviews</a>
+      <a class="nav-link" href="#reviews">Review</a>
     </div>
   </header>
 
   <main class="main">
     <section class="hero">
-      <p class="eyebrow">Tonight's picks</p>
-      <h1>What are you watching tonight?</h1>
-      <p>Short reviews of sale picks and hot titles. Read a bit, then go official if it clicks.</p>
+      <p class="eyebrow">Tonight</p>
+      <h1>What to watch tonight?</h1>
+      <p>Sale and ranking. Short review, then FANZA.</p>
     </section>
 
     <section id="reviews">
       <div class="section-head">
-        <h2>Latest reviews</h2>
-        <span>Updated daily</span>
+        <h2>New review</h2>
+        <span>Daily update</span>
       </div>
       <div class="filter-panel">
-        <p class="filter-label">Mood</p>
-        <div class="mood-chips" role="group" aria-label="Filter by mood">
+        <p class="filter-label">Type</p>
+        <div class="mood-chips" role="group" aria-label="Filter by type">
           {{MOOD_FILTERS}}
         </div>
         <div class="search-wrap">
           <label for="mood-search" class="filter-label">Search</label>
-          <input id="mood-search" type="search" placeholder="sweet, taboo, sale..." autocomplete="off">
+          <input id="mood-search" type="search" placeholder="ntr, sale, vr..." autocomplete="off">
         </div>
         <p class="filter-status" id="filter-status" aria-live="polite"></p>
       </div>
-      <div class="card-grid" aria-label="Reviews">
+      <div class="card-grid" aria-label="Review">
         {{CARD_GRID}}
       </div>
     </section>
@@ -403,7 +408,7 @@
   <footer class="site-footer">
     <div class="footer-inner">
       <strong>Yoru no Libre X</strong>
-      <div>FANZA review media. This site contains affiliate ads.</div>
+      <div>FANZA review. This site has affiliate ads.</div>
       <div>&copy; {{YEAR}} Yoru no Libre X</div>
     </div>
   </footer>
@@ -429,9 +434,9 @@
         });
         if (status) {
           if (activeMood === "all" && !q) {
-            status.textContent = visible + " reviews";
+            status.textContent = visible + " review";
           } else {
-            status.textContent = visible + " hits";
+            status.textContent = visible + " hit";
           }
         }
       }
