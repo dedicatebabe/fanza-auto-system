@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.8.0
+# Version: 2.9.0
 # Date: 2026-09-14
-# Summary: For youとNoteを削除。Xの刺さる語尾を禁止
+# Summary: X本文からレビュー誘導を外し、公式はリプ用に分離
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 MODEL_NAME = "gemini-3.6-flash"
 MAX_TWEET_LENGTH = 280
 MIN_SALE_DISCOUNT_FOR_COPY = 30.0
-CTA_LINE = "👇画像付きの詳しいレビューと動画はこちら"
+CTA_LINE = "👇公式はリプへ"
 BANNED_X_HOOKS = (
     "マジでこの作品",
     "刺さる人には刺さりすぎてヤバい",
@@ -403,8 +403,8 @@ def _fallback_x_hook(item: FanzaItem) -> str:
     return _sanitize_for_x(line, max_len=40)
 
 
-def _fallback_x_post_text(item: FanzaItem, *, article_url: str) -> str:
-    """Gemini 失敗時のフック型 X 投稿文。"""
+def _fallback_x_post_text(item: FanzaItem) -> str:
+    """Gemini 失敗時のフック型 X 投稿文。URLは入れない。"""
     hook = _fallback_x_hook(item)
     short_title = _sanitize_for_x(item.title)[:28]
     if item.discount_percent is not None and item.discount_percent >= MIN_SALE_DISCOUNT_FOR_COPY:
@@ -416,11 +416,9 @@ def _fallback_x_post_text(item: FanzaItem, *, article_url: str) -> str:
         f"{hook}\n"
         f"{short_title}\n"
         f"{discount_line}\n"
-        f"{CTA_LINE}\n"
-        f"{article_url}\n"
         f"#FANZAおすすめ"
     )
-    return _normalize_x_post(text, article_url=article_url)
+    return _normalize_x_post(text)
 
 
 def _normalize_article_headings(raw_html: str) -> str:
@@ -489,14 +487,19 @@ def generate_article_html(item: FanzaItem, client: genai.Client | None = None) -
     return _normalize_article_headings(_template_article_html(item))
 
 
-def _normalize_x_post(text: str, *, article_url: str) -> str:
-    """多行フック投稿を正規化し、CTA＋個別記事URLを末尾に固定する。"""
-    cleaned = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-    cleaned = cleaned.replace(article_url, "").strip()
+def _normalize_x_post(text: str) -> str:
+    """多行フック投稿を正規化する。URLは本文に入れない。"""
+    cleaned = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     cleaned = re.sub(r"[ \t]+", " ", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     lines = [ln.strip() for ln in cleaned.split("\n") if ln.strip()]
-    lines = [ln for ln in lines if CTA_LINE not in ln and not ln.startswith("http")]
+    lines = [
+        ln
+        for ln in lines
+        if CTA_LINE not in ln
+        and not ln.startswith("http")
+        and "詳しいレビュー" not in ln
+    ]
 
     body_lines: list[str] = []
     tag_tokens: list[str] = []
@@ -514,22 +517,32 @@ def _normalize_x_post(text: str, *, article_url: str) -> str:
     body = "\n".join(body_lines).strip()
     unique_tags = list(dict.fromkeys(tag_tokens))[:2]
     tags = " ".join(unique_tags).strip()
-    parts = [body, CTA_LINE, article_url]
-    if tags:
-        parts.append(tags)
-    result = "\n".join(p for p in parts if p).strip()
+    result = "\n".join(p for p in (body, tags) if p).strip()
     if len(result) <= MAX_TWEET_LENGTH:
         return result
-    return _truncate_multiline_tweet(result, article_url, MAX_TWEET_LENGTH)
+    return result[: MAX_TWEET_LENGTH - 1].rstrip() + "…"
 
 
-def generate_x_post_text(client: genai.Client, item: FanzaItem, *, cushion_page_url: str) -> str:
+def generate_x_reply_text(item: FanzaItem) -> str:
+    """リプ用。FANZAのアフィリエイトURLだけ置く（ジャケットカード用）。"""
+    url = (item.affiliate_url or "").strip()
+    if not url:
+        raise ValueError("affiliate_url が空です。")
+    return f"広告\n{url}"
+
+
+def generate_x_post_text(
+    client: genai.Client,
+    item: FanzaItem,
+    *,
+    cushion_page_url: str | None = None,
+) -> str:
     """
-    X 投稿用テキストを生成する（フック型・多行）。
+    X 本ツイ用テキストを生成する（フック型・多行）。
 
-    cushion_page_url は個別記事のフルURL（トップではなく article_*.html）。
+    URLは入れない。公式リンクは generate_x_reply_text でリプに置く。
     """
-    article_url = cushion_page_url
+    _ = cushion_page_url
     context = _build_item_context(item, for_x=True)
     discount_line = "割引情報がない場合は『今見ておく価値あり』と書いてください。"
     if item.discount_percent is not None:
@@ -539,12 +552,11 @@ def generate_x_post_text(client: genai.Client, item: FanzaItem, *, cushion_page_
     system_prompt = _load_prompt_file("x_post.txt")
     user_prompt = (
         "スクロールを止める強力なフック投稿を作って。"
-        "構成はプロンプト指定どおり。最終的に個別記事URLを単独行で置くこと。"
+        "構成はプロンプト指定どおり。本文にURLを入れるな。"
         "『刺さる』は使うな。語尾はこの作品のシチュで止めろ。\n"
-        f"{discount_line}\n"
-        f"記事URL: {article_url}\n\n"
+        f"{discount_line}\n\n"
         f"作品情報:\n{context}\n\n"
-        f"文字数上限: {MAX_TWEET_LENGTH}（URL含む）。出力は投稿文のみ。"
+        f"文字数上限: {MAX_TWEET_LENGTH}。出力は投稿文のみ。"
     )
     logger.info("Gemini: X 投稿文生成を開始 content_id=%s model=%s", item.content_id, MODEL_NAME)
     text = _generate_text(
@@ -558,39 +570,6 @@ def generate_x_post_text(client: genai.Client, item: FanzaItem, *, cushion_page_
             "Gemini: X 投稿文が空のためテンプレートを使用 content_id=%s",
             item.content_id,
         )
-        return _fallback_x_post_text(item, article_url=article_url)
+        return _fallback_x_post_text(item)
     text = _rewrite_generic_x_hook(text, item)
-    return _normalize_x_post(text, article_url=article_url)
-
-
-def _truncate_multiline_tweet(text: str, url: str, max_len: int) -> str:
-    """改行をできるだけ残しつつ max_len 以内に切り詰める。"""
-    if len(text) <= max_len:
-        return text
-    # URL と CTA は必須
-    suffix = f"{CTA_LINE}\n{url}"
-    # ハッシュタグがあれば末尾に残す
-    tags = ""
-    for line in reversed(text.split("\n")):
-        if line.startswith("#"):
-            tags = line
-            break
-    if tags:
-        suffix = f"{suffix}\n{tags}"
-    reserved = len(suffix) + 1
-    allowed = max_len - reserved
-    if allowed < 20:
-        return suffix[:max_len]
-    body = text
-    for token in (url, CTA_LINE, tags):
-        if token:
-            body = body.replace(token, "")
-    body = re.sub(r"\n{3,}", "\n\n", body).strip()
-    if len(body) > allowed:
-        body = body[: allowed - 1].rstrip() + "…"
-    return f"{body}\n{suffix}".strip()
-
-
-def _truncate_tweet(text: str, url: str, max_len: int) -> str:
-    """URL を保持したまま max_len 以内に切り詰める（互換用）。"""
-    return _truncate_multiline_tweet(text, url, max_len)
+    return _normalize_x_post(text)
