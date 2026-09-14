@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.6.0
+# Version: 2.7.0
 # Date: 2026-09-14
-# Summary: 見出し簡略化、日本語口調、X1行目の使い回し禁止
+# Summary: Web記事はAPI属性の型枠。Geminiは使わない
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -218,62 +218,177 @@ def _generate_text(
     return _extract_response_text(response)
 
 
-def _fallback_hook(item: FanzaItem) -> str:
-    """作品属性から、何が抜けるかを書く導入文。"""
-    blob = f"{item.title}\n{item.description}"
-    if any(k in blob for k in ("NTR", "寝取", "内緒", "禁断")):
-        return "彼氏の前で彼女が他の男に抱かれる。見られるスリルで抜く。"
-    if any(k in blob for k in ("デビュー", "Debut", "専属")):
-        return "専属新人の初撮り。顔と身体が初めてカメラの前で乱れる。"
-    if any(k in blob for k in ("VR", "8K")):
-        return "目の前で密着されるVR。吐息と胸の距離で抜く。"
-    return "シチュと身体を見て、今夜抜けるか決める。"
+def _item_hay(item: FanzaItem) -> str:
+    """タイトルとAPI属性を1本の検索用テキストにする。"""
+    return "\n".join(
+        [
+            item.title or "",
+            item.description or "",
+            " ".join(item.genres),
+            " ".join(item.actresses),
+            item.maker or "",
+        ]
+    )
+
+
+def _parse_labeled_line(description: str, label: str) -> tuple[str, ...]:
+    for line in (description or "").splitlines():
+        if line.startswith(label):
+            raw = line.split(":", 1)[-1].split("：", 1)[-1]
+            return tuple(p.strip() for p in raw.split("/") if p.strip())
+    return ()
+
+
+def _item_genres(item: FanzaItem) -> tuple[str, ...]:
+    if item.genres:
+        return item.genres
+    return _parse_labeled_line(item.description, "ジャンル")
+
+
+def _item_actresses(item: FanzaItem) -> tuple[str, ...]:
+    if item.actresses:
+        return item.actresses
+    return _parse_labeled_line(item.description, "出演")
+
+
+def _item_maker(item: FanzaItem) -> str:
+    if item.maker:
+        return item.maker
+    names = _parse_labeled_line(item.description, "メーカー")
+    return names[0] if names else ""
+
+
+def _hay_has(hay: str, *keys: str) -> bool:
+    return any(k in hay for k in keys)
+
+
+def _situation_line(item: FanzaItem) -> str:
+    """API属性から1文。観た感想は書かない。"""
+    hay = _item_hay(item)
+    vr = _hay_has(hay, "VR", "8K", "vr")
+    ntr = _hay_has(hay, "NTR", "寝取", "内緒", "禁断", "好きピ")
+    debut = _hay_has(hay, "デビュー", "Debut", "専属")
+    busty = _hay_has(hay, "Hカップ", "巨乳", "爆乳", "美乳", "グラマー")
+    best = _hay_has(hay, "ベスト", "総集編", "18時間", "1116分")
+    swim = _hay_has(hay, "水着", "ビーチ", "ビキニ")
+    if vr and ntr:
+        return "VRのNTR。彼女が目の前で他の男に抱かれる。"
+    if ntr:
+        return "寝取られ。彼氏や恋人の前で崩れる。"
+    if debut and busty:
+        return "専属の初撮り。巨乳の新人。"
+    if debut:
+        return "専属の初撮り。"
+    if vr and best:
+        return "VRベスト。場面を選んで観る。"
+    if vr:
+        return "VR。目の前で密着する。"
+    if swim:
+        return "水着。ビーチや屋外のシチュ。"
+    if _hay_has(hay, "母乳"):
+        if _hay_has(hay, "兄嫁", "義姉", "姉・妹"):
+            return "母乳。兄嫁のシチュ。"
+        return "母乳もの。"
+    return "ジャンルは公式のタグどおり。詳細はFANZAで。"
+
+
+def _who_line(item: FanzaItem) -> str:
+    hay = _item_hay(item)
+    if _hay_has(hay, "NTR", "寝取", "内緒", "禁断", "好きピ"):
+        return "寝取られが欲しい人。"
+    if _hay_has(hay, "デビュー", "Debut", "専属"):
+        return "新人の初撮りで選びたい人。"
+    if _hay_has(hay, "VR", "8K", "vr"):
+        return "VRで抜きたい人。"
+    if _hay_has(hay, "母乳"):
+        return "母乳ものが欲しい人。"
+    if _hay_has(hay, "ベスト", "総集編"):
+        return "長い作品から場面を選ぶ人。"
+    return "ジャンルを見て選びたい人。"
+
+
+def _credit_lines(item: FanzaItem) -> list[str]:
+    """出演・メーカー。APIにあるものだけ。"""
+    lines: list[str] = []
+    actresses = _item_actresses(item)
+    maker = _item_maker(item)
+    if actresses:
+        shown = actresses[:4]
+        credit = "出演: " + "、".join(shown)
+        if len(actresses) > 4:
+            credit += "、ほか"
+        lines.append(credit)
+    if maker:
+        lines.append("メーカー: " + maker)
+    return lines
+
+
+SKIP_GENRES = {
+    "ハイビジョン",
+    "4K",
+    "独占配信",
+    "VR専用",
+    "ハイクオリティVR",
+    "単体作品",
+}
+
+
+def _point_items(item: FanzaItem) -> list[str]:
+    """見どころは公式ジャンル名。画質タグは後ろに回す。"""
+    genres = _item_genres(item)
+    primary = [g for g in genres if g not in SKIP_GENRES]
+    filler = [g for g in genres if g in SKIP_GENRES]
+    points: list[str] = []
+    for name in primary:
+        if name and name not in points:
+            points.append(name)
+        if len(points) >= 5:
+            return points[:5]
+    if len(points) < 3:
+        for name in filler:
+            if name and name not in points:
+                points.append(name)
+            if len(points) >= 3:
+                break
+    hay = _item_hay(item)
+    extras = []
+    if "8K" in hay and not any("8K" in p for p in points):
+        extras.append("8K")
+    if "Hカップ" in hay and not any("Hカップ" in p or "巨乳" in p for p in points):
+        extras.append("Hカップ")
+    for extra in extras:
+        if extra not in points:
+            points.insert(0, extra)
+    if not points:
+        points.append("詳細はFANZAで")
+    return points[:5]
+
+
+def _template_article_html(item: FanzaItem) -> str:
+    """API属性の型枠HTML。観たレビューは書かない。"""
+    credits = _credit_lines(item)
+    credit_html = "".join(f"<p>{html.escape(line)}</p>\n" for line in credits)
+    situation = html.escape(_situation_line(item))
+    lis = "\n  ".join(f"<li>{html.escape(p)}</li>" for p in _point_items(item))
+    who = html.escape(_who_line(item))
+    return (
+        f"<h2>Review</h2>\n"
+        f"{credit_html}"
+        f"<p>{situation}</p>\n"
+        f"<h2>Point</h2>\n"
+        f"<ul>\n  {lis}\n</ul>\n"
+        f"<h2>For you</h2>\n"
+        f"<p>{who}</p>\n"
+        f"<h2>Note</h2>\n"
+        f"<p>中身の確認はFANZAのサンプルで。ここは未視聴の紹介。</p>\n"
+        f"<h2>Last</h2>\n"
+        f"<p>詳細は公式ページへ。</p>\n"
+    )
 
 
 def _fallback_article_html(item: FanzaItem) -> str:
-    """Gemini 失敗時のエロ動画レビュー HTML。価格は見どころに入れない。"""
-    blob = f"{item.title}\n{item.description}"
-    hook = html.escape(_fallback_hook(item))
-    points: list[str] = []
-    if any(k in blob for k in ("NTR", "寝取", "内緒")):
-        points.append("好きな人の目の前で崩れるNTR")
-    if any(k in blob for k in ("中出し", "生ハメ")):
-        points.append("生で中までいく展開")
-    if any(k in blob for k in ("Hカップ", "巨乳", "爆乳", "美乳")):
-        points.append("胸の寄りが強い。乳が画面に来る")
-    if any(k in blob for k in ("水着", "ビーチ", "ビキニ")):
-        points.append("水着のまま熱が上がる")
-    if any(k in blob for k in ("VR", "8K")):
-        points.append("目の前のキスと密着。VR向きの距離")
-    if any(k in blob for k in ("ベスト", "総集編")):
-        points.append("場面を飛ばして、今抜きたいシチュだけ観られる")
-    if any(k in blob for k in ("デビュー", "Debut", "専属")):
-        points.append("初めて乱れる顔。初物感で抜く")
-    if any(k in blob for k in ("潮吹", "3P", "4P")):
-        points.append("清楚顔だけで終わらない。潮吹きや複数もある")
-    while len(points) < 3:
-        points.append("公式のサンプルで、顔・胸・シチュを見てからでいい")
-    lis = "\n  ".join(f"<li>{html.escape(p)}</li>" for p in points[:5])
-    who = "今夜これで抜けるか、シチュと身体で選びたい人。"
-    if any(k in blob for k in ("NTR", "寝取")):
-        who = "寝取られと生が欲しい夜。純愛はいらない人。"
-    elif any(k in blob for k in ("デビュー", "Debut")):
-        who = "新人の初々しさで抜きたい人。顔と胸を見て選べばいい。"
-    elif "VR" in blob:
-        who = "VRで目の前の女に密着して抜きたい人。"
-    return f"""<h2>Review</h2>
-<p>{hook}</p>
-<h2>Point</h2>
-<ul>
-  {lis}
-</ul>
-<h2>For you</h2>
-<p>{html.escape(who)}</p>
-<h2>Note</h2>
-<p>タイトルが盛ってることもある。サンプルの肌と声を見てからでいい。</p>
-<h2>Last</h2>
-<p>抜けるシチュかどうかだけ見て、公式へ。</p>
-"""
+    """互換用。本文は型枠と同じ。"""
+    return _template_article_html(item)
 
 
 def _fallback_x_hook(item: FanzaItem) -> str:
@@ -341,87 +456,25 @@ def _plain_text_from_html(raw_html: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _summary_from_signals(item: FanzaItem, blob: str) -> str:
-    """カード用の短い編集要約。タイトルやジャンル列は出さない。"""
-    hay = f"{item.title}\n{item.description}\n{blob}"
-    if any(k in hay for k in ("NTR", "寝取", "内緒", "禁断", "好きピ")):
-        if "VR" in hay or "vr" in hay.lower():
-            return "VRで彼女が目の前で寝取られる。交姦の現場にいる感じ。"
-        return "彼氏の前で生のNTR。見られながら中出し。"
-    if any(k in hay for k in ("デビュー", "Debut", "専属")):
-        if any(k in hay for k in ("Hカップ", "巨乳", "爆乳", "グラマー")):
-            return "Hカップ新人の初撮り。清楚顔が乱れる。"
-        return "専属新人の初撮り。顔と身体の初物感。"
-    if "VR" in hay or "vr" in hay.lower():
-        if any(k in hay for k in ("ベスト", "18時間", "8時間", "総集編")):
-            return "8K VRベスト。目の前で密着。場面を選んで抜く。"
-        return "目の前で密着するVR。吐息と胸の距離。"
-    if any(k in hay for k in ("ベスト", "総集編")):
-        return "長いベスト。気分で場面を変える。"
-    return "公式の肌と声を見てから選ぶ。"
-
-
 def extract_card_summary(article_html_body: str, item: FanzaItem) -> str:
     """
     カード用要約。
 
-    HTMLの切り出しは使わず、作品信号から短い一文を作る。
-    タイトル全文・ジャンル列・空欄を出さない。
+    API属性の型枠1文。タイトル全文・ジャンル列は出さない。
     """
-    blob = _plain_text_from_html(article_html_body)
-    return _summary_from_signals(item, blob)
+    _ = article_html_body
+    return _situation_line(item)
 
 
-def generate_article_html(client: genai.Client, item: FanzaItem) -> str:
+def generate_article_html(item: FanzaItem, client: genai.Client | None = None) -> str:
     """
     GitHub Pages 用の HTML 本文（fragment）を生成する。
 
-    返却値は section 要素を中心とした HTML 断片（ページテンプレートに埋め込む）。
+    Gemini は使わない。APIのジャンル・出演・メーカーを型枠に入れる。
     """
-    context = _build_item_context(item, for_x=False)
-    system_prompt = _load_prompt_file("article.txt")
-    user_prompt = (
-        "エロ動画レビューとして、何が抜けるかを具体的に書いて。"
-        "友達に勧める日本語。タイトル全文は繰り返さない。価格を見どころに入れるな。"
-        "見出しは Review / Point / For you / Note / Last。\n\n"
-        f"{context}"
-    )
-    logger.info("Gemini: 記事 HTML 生成を開始 content_id=%s model=%s", item.content_id, MODEL_NAME)
-    content = _generate_text(
-        client,
-        system_prompt=system_prompt,
-        user_prompt=user_prompt,
-        temperature=0.85,
-        adult_ok=True,
-    )
-    html_body = _strip_code_fence(content)
-    if not html_body:
-        logger.warning(
-            "Gemini: 記事 HTML が空のためリトライ content_id=%s",
-            item.content_id,
-        )
-        retry_prompt = (
-            "次の作品を観た人の口調で、エロ寄りの HTML レビューにして。"
-            "見出しは Review / Point / For you / Note / Last。"
-            "未成年連想は禁止。タイトル全文は繰り返さない。\n\n"
-            f"{context}"
-        )
-        content = _generate_text(
-            client,
-            system_prompt=system_prompt,
-            user_prompt=retry_prompt,
-            temperature=0.5,
-            adult_ok=True,
-        )
-        html_body = _strip_code_fence(content)
-
-    if not html_body:
-        logger.warning(
-            "Gemini: 記事 HTML が空のためテンプレートを使用 content_id=%s",
-            item.content_id,
-        )
-        return _normalize_article_headings(_fallback_article_html(item))
-    return _normalize_article_headings(html_body)
+    _ = client
+    logger.info("記事HTMLを型枠で生成 content_id=%s", item.content_id)
+    return _normalize_article_headings(_template_article_html(item))
 
 
 def _normalize_x_post(text: str, *, article_url: str) -> str:

@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.4.0
-# Date: 2026-09-13
-# Summary: 既存カード再抽出オプションを追加
+# Version: 2.5.0
+# Date: 2026-09-14
+# Summary: 記事本文は型枠。GeminiはX投稿のみ
 # ==========================================
 """
 FANZA（DMM API v3）のセール・人気作品を取得し、
@@ -177,7 +177,7 @@ def main() -> int:
         logger.info("個別記事 URL（X投稿用）: %s", article_url)
 
         gemini_client = create_gemini_client(gemini_key)
-        article_html = generate_article_html(gemini_client, item)
+        article_html = generate_article_html(item)
         card_summary = extract_card_summary(article_html, item)
         moods = infer_moods(item, summary=card_summary)
         logger.info("気分タグ: %s", moods)

@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.2.0
-# Date: 2026-09-13
-# Summary: deliveries 価格も拾い、セール判定の欠落を減らす
+# Version: 1.3.0
+# Date: 2026-09-14
+# Summary: ジャンル・出演・メーカーを構造化して保持
 # ==========================================
 """DMM アフィリエイト API v3 連携モジュール。"""
 
@@ -42,6 +42,9 @@ class FanzaItem:
     review_average: float | None
     review_count: int | None
     description: str
+    genres: tuple[str, ...] = ()
+    actresses: tuple[str, ...] = ()
+    maker: str = ""
 
 
 def _parse_yen(value: Any) -> int | None:
@@ -66,31 +69,60 @@ def _calc_discount_percent(list_price: int | None, sale_price: int | None) -> fl
     return round((1.0 - sale_price / list_price) * 100.0, 1)
 
 
-def _extract_description(raw_item: dict[str, Any]) -> str:
-    """API レスポンスから概要説明テキストを抽出する。"""
+def _clean_person_name(name: str) -> str:
+    """出演名から読み仮名括弧を外す。"""
+    text = (name or "").strip()
+    if not text:
+        return ""
+    return text.split("（")[0].split("(")[0].strip() or text
+
+
+def _iteminfo_names(iteminfo: dict[str, Any], key: str, *, limit: int = 8) -> tuple[str, ...]:
+    """iteminfo の name 配列を取り出す。"""
+    rows = iteminfo.get(key)
+    if not isinstance(rows, list):
+        return ()
+    names: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        raw = str(row.get("name") or "").strip()
+        if not raw:
+            continue
+        cleaned = _clean_person_name(raw) if key == "actress" else raw
+        if cleaned and cleaned not in names:
+            names.append(cleaned)
+        if len(names) >= limit:
+            break
+    return tuple(names)
+
+
+def _extract_structured_info(raw_item: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...], str]:
+    """ジャンル・出演・メーカーを API の iteminfo から取る。"""
     iteminfo = raw_item.get("iteminfo") or {}
+    if not isinstance(iteminfo, dict):
+        iteminfo = {}
+    genres = _iteminfo_names(iteminfo, "genre", limit=8)
+    actresses = _iteminfo_names(iteminfo, "actress", limit=6)
+    makers = _iteminfo_names(iteminfo, "maker", limit=1)
+    maker = makers[0] if makers else ""
+    return genres, actresses, maker
+
+
+def _extract_description(
+    *,
+    genres: tuple[str, ...],
+    actresses: tuple[str, ...],
+    maker: str,
+) -> str:
+    """API 属性をテキスト概要にする（X・気分タグ用）。"""
     parts: list[str] = []
-
-    genre = iteminfo.get("genre")
-    if isinstance(genre, list):
-        names = [g.get("name", "") for g in genre if isinstance(g, dict)]
-        names = [n for n in names if n]
-        if names:
-            parts.append("ジャンル: " + " / ".join(names[:8]))
-
-    actress = iteminfo.get("actress")
-    if isinstance(actress, list):
-        names = [a.get("name", "") for a in actress if isinstance(a, dict)]
-        names = [n for n in names if n]
-        if names:
-            parts.append("出演: " + " / ".join(names[:6]))
-
-    maker = iteminfo.get("maker")
-    if isinstance(maker, list) and maker:
-        first = maker[0]
-        if isinstance(first, dict) and first.get("name"):
-            parts.append("メーカー: " + str(first["name"]))
-
+    if genres:
+        parts.append("ジャンル: " + " / ".join(genres))
+    if actresses:
+        parts.append("出演: " + " / ".join(actresses))
+    if maker:
+        parts.append("メーカー: " + maker)
     if not parts:
         return "人気のデジタル動画作品です。詳細は公式ページをご確認ください。"
     return "\n".join(parts)
@@ -154,7 +186,12 @@ def _normalize_item(raw: dict[str, Any]) -> FanzaItem | None:
         except (TypeError, ValueError):
             review_count = None
 
-    description = _extract_description(raw)
+    genres, actresses, maker = _extract_structured_info(raw)
+    description = _extract_description(
+        genres=genres,
+        actresses=actresses,
+        maker=maker,
+    )
 
     return FanzaItem(
         content_id=content_id,
@@ -167,6 +204,9 @@ def _normalize_item(raw: dict[str, Any]) -> FanzaItem | None:
         review_average=review_average,
         review_count=review_count,
         description=description,
+        genres=genres,
+        actresses=actresses,
+        maker=maker,
     )
 
 
@@ -282,3 +322,45 @@ def fetch_fanza_item_for_posting(
         f"未投稿の対象作品が見つかりませんでした（mode={mode_label}）。"
         "posted.json の履歴または API 設定を確認してください。"
     )
+
+
+def fetch_fanza_item_by_content_id(
+    api_id: str,
+    affiliate_id: str,
+    content_id: str,
+) -> FanzaItem | None:
+    """content_id 指定で FANZA 作品を1件取得する。"""
+    cid = (content_id or "").strip()
+    if not api_id or not affiliate_id or not cid:
+        return None
+    params = {
+        "api_id": api_id,
+        "affiliate_id": affiliate_id,
+        "site": SITE_FANZA,
+        "service": SERVICE_DIGITAL,
+        "floor": FLOOR_VIDEOA,
+        "cid": cid,
+        "hits": "1",
+        "offset": "1",
+        "output": "json",
+    }
+    url = f"{ITEM_LIST_URL}?{urlencode(params)}"
+    logger.info("DMM API: cid=%s を取得", cid)
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
+    payload = response.json()
+    result = payload.get("result") or {}
+    status = result.get("status")
+    if status not in (200, "200"):
+        logger.warning("DMM API cid取得エラー status=%s", status)
+        return None
+    items = result.get("items") or []
+    if not isinstance(items, list):
+        return None
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        normalized = _normalize_item(raw)
+        if normalized is not None:
+            return normalized
+    return None

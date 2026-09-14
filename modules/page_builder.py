@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.7.0
+# Version: 2.8.0
 # Date: 2026-09-14
-# Summary: 見出しとカード文言を日本人にもわかる英語に
+# Summary: 型枠記事でもジャンル・出演を引き継ぐ
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -102,6 +102,9 @@ def _item_with_html_prices(item: FanzaItem, raw_html: str) -> FanzaItem:
         review_average=item.review_average,
         review_count=item.review_count,
         description=item.description,
+        genres=item.genres,
+        actresses=item.actresses,
+        maker=item.maker,
     )
 
 
