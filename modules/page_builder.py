@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.15.0
+# Version: 2.17.0
 # Date: 2026-09-16
-# Summary: トップと記事下のチャット入口を強くする
+# Summary: 公式のFANZA動画新着ウィジェットを配置する
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -38,20 +38,8 @@ INDEX_ENTRIES_FILE = ".index_entries.json"
 CHAT_PAGE_FILENAME = "chat.html"
 SITE_NAME = "夜のリブレ"
 AFFILIATE_GATE = "https://al.fanza.co.jp/"
-LIVECHAT_FLOORS = (
-    (
-        "adult",
-        "アダルト",
-        "https://livechat.dmm.co.jp/acha",
-        "今いる人の顔が一覧になる。",
-    ),
-    (
-        "married",
-        "人妻",
-        "https://livechat.dmm.co.jp/macha",
-        "人妻フロアの待機一覧。",
-    ),
-)
+LIVECHAT_BANNER_AFFILIATE_ID = "nightlibrary-001"
+NEW_ARRIVAL_WIDGET_ID = "9f031fe56e47210db1962053ed1bbddc"
 JACKET_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -297,42 +285,56 @@ def _resolve_affiliate_id(*candidates: str) -> str:
 
 
 def _render_chat_cards(affiliate_id: str) -> str:
-    """FANZAライブチャットの公式待機一覧カード。"""
-    af_id = (affiliate_id or "").strip()
-    if not af_id:
-        return ""
-    cards: list[str] = []
-    for slug, label, dest, blurb in LIVECHAT_FLOORS:
-        href = html.escape(wrap_affiliate_url(dest, af_id), quote=True)
-        if not href:
-            continue
-        title = html.escape(label)
-        body = html.escape(blurb)
-        slug_cls = html.escape(slug)
-        cards.append(
-            f'<a class="chat-card chat-card-{slug_cls}" href="{href}" '
-            f'rel="nofollow sponsored noopener" target="_blank">'
-            f'<div class="chat-visual" aria-hidden="true">'
-            f'<span class="chat-live">待機中</span></div>'
-            f'<div class="chat-body"><p class="chat-kicker">FANZAライブチャット</p>'
-            f"<h3>{title}</h3><p>{body}</p>"
-            f'<span class="chat-go">顔を見て入る</span></div></a>'
-        )
-    return "\n".join(cards)
+    """公式ライブチャットバナー。管理画面の埋め込みを使う。"""
+    _ = affiliate_id
+    af = html.escape(LIVECHAT_BANNER_AFFILIATE_ID, quote=True)
+    event_src = (
+        "https://www.dmm.co.jp/live/api/-/online-banner/"
+        f"?size=300_250&type=avevent&af_id={af}"
+    )
+    amateur_src = (
+        "https://livechat.dmm.co.jp/publicads"
+        f"?&size=S&design=B&affiliate_id={af}"
+    )
+    return (
+        '<div class="chat-banner">'
+        '<iframe id="onlineBannerAvevent" title="FANZAライブチャット 女優イベント" '
+        'frameborder="0" scrolling="no" width="300" height="250" '
+        f'src="{event_src}"></iframe></div>\n'
+        '<div class="chat-banner">'
+        '<iframe id="onlineBannerAmateur" title="FANZAライブチャット 素人" '
+        'frameborder="0" scrolling="no" width="300" height="250" '
+        f'src="{amateur_src}"></iframe></div>'
+    )
+
+
+def render_new_arrival_widget() -> str:
+    """公式のFANZA動画新着ウィジェット。"""
+    wid = html.escape(NEW_ARRIVAL_WIDGET_ID, quote=True)
+    return (
+        '<section class="widget-strip">\n'
+        "  <h2>FANZAの新着</h2>\n"
+        '  <p class="widget-lead">公式バナー。紹介してない作品も出る。</p>\n'
+        '  <div class="widget-frame">\n'
+        f'    <ins class="dmm-widget-placement" data-id="{wid}" '
+        'style="background:transparent"></ins>\n'
+        f'    <script src="https://widget-view.dmm.co.jp/js/placement.js" '
+        f'class="dmm-widget-scripts" data-id="{wid}"></script>\n'
+        "  </div>\n"
+        "</section>\n"
+    )
 
 
 def render_chat_block(affiliate_id: str, *, more_link: bool = True) -> str:
-    """記事下のチャット入口。IDが無ければ出さない。"""
+    """記事下のチャット入口。"""
     cards = _render_chat_cards(affiliate_id)
-    if not cards:
-        return ""
     more = ""
     if more_link:
         more = '<a class="chat-more" href="chat.html">チャットの入口へ</a>'
     return (
         '<section class="chat-block">\n'
         "  <h2>今いるチャット</h2>\n"
-        '  <p class="chat-lead">公式の顔が一覧になる。見てから入る。</p>\n'
+        '  <p class="chat-lead">公式バナー。今チャット中の顔が出る。</p>\n'
         f'  <div class="chat-grid">\n    {cards}\n  </div>\n'
         f"  {more}\n"
         "</section>\n"
@@ -340,17 +342,15 @@ def render_chat_block(affiliate_id: str, *, more_link: bool = True) -> str:
 
 
 def render_index_chat_strip(affiliate_id: str) -> str:
-    """トップ用のチャット入口。IDが無ければ出さない。"""
+    """トップ用のチャット入口。"""
     cards = _render_chat_cards(affiliate_id)
-    if not cards:
-        return ""
     return (
         '<section class="chat-strip" id="chat">\n'
         '  <div class="section-head">\n'
         "    <h2>今いるチャット</h2>\n"
         '    <a class="section-more" href="chat.html">入口へ</a>\n'
         "  </div>\n"
-        '  <p class="chat-lead">公式の待機一覧。今いる人の顔から選ぶ。</p>\n'
+        '  <p class="chat-lead">公式バナー。今チャット中の顔が出る。</p>\n'
         f'  <div class="chat-grid">\n    {cards}\n  </div>\n'
         "</section>\n"
     )
@@ -404,7 +404,7 @@ def _write_chat_page(
         template,
         {
             "PAGE_TITLE": "今いるチャット",
-            "META_DESCRIPTION": "公式の待機一覧。今いる人の顔から選ぶ。",
+            "META_DESCRIPTION": "公式バナー。今チャット中の顔が出る。",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/chat.html"),
             "CHAT_CARDS": cards,
             "YEAR": str(datetime.now(timezone.utc).year),
@@ -541,6 +541,7 @@ def _render_article_page(
             "PRICE_LINE": price_line,
             "ARTICLE_BODY": article_html_body,
             "RELATED_BLOCK": related_html if related_html is not None else render_related_html(related),
+            "NEW_ARRIVAL_WIDGET": render_new_arrival_widget(),
             "CHAT_BLOCK": render_chat_block(resolved_af_id),
             "AFFILIATE_URL": affiliate,
             "YEAR": str(datetime.now(timezone.utc).year),
@@ -625,6 +626,7 @@ def _render_index_page(
             "META_DESCRIPTION": "今夜見る一本を短く紹介。あとは公式で。",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/"),
             "CHAT_STRIP": render_index_chat_strip(affiliate_id),
+            "NEW_ARRIVAL_WIDGET": render_new_arrival_widget(),
             "MOOD_FILTERS": _render_mood_filters(sorted_entries),
             "CARD_GRID": cards,
             "YEAR": str(datetime.now(timezone.utc).year),
@@ -716,7 +718,7 @@ def _existing_related_html(article_html: str) -> str:
     if start < 0:
         return ""
     end = len(article_html)
-    for marker in ('<section class="chat-block">', '<a class="back"'):
+    for marker in ('<section class="widget-strip">', '<section class="chat-block">', '<a class="back"'):
         pos = article_html.find(marker, start)
         if pos != -1:
             end = min(end, pos)
