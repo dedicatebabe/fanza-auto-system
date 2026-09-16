@@ -1,7 +1,7 @@
 <!--
-Version: 2.8.0
+Version: 2.10.0
 Date: 2026-09-16
-Summary: TYPEラベルとタグを日本語にする
+Summary: トップのメイン見出しを英語に戻す
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -110,8 +110,7 @@ Summary: TYPEラベルとタグを日本語にする
     .nav-link {
       color: var(--muted);
       font-size: 0.88rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
     .nav-link:hover { color: var(--gold); }
     .main { padding: 2.6rem 0 5rem; }
@@ -368,11 +367,11 @@ Summary: TYPEラベルとタグを日本語にする
       <a class="brand" href="index.html">
         <div class="brand-mark">夜</div>
         <div>
-          <strong>Yoru no Libre X</strong>
-          <span>FANZA review</span>
+          <strong>夜のリブレ</strong>
+          <span>今夜の一本</span>
         </div>
       </a>
-      <a class="nav-link" href="#reviews">Review</a>
+      <a class="nav-link" href="#reviews">紹介</a>
     </div>
   </header>
 
@@ -385,8 +384,8 @@ Summary: TYPEラベルとタグを日本語にする
 
     <section id="reviews">
       <div class="section-head">
-        <h2>New review</h2>
-        <span>Daily update</span>
+        <h2>新着</h2>
+        <span>毎日更新</span>
       </div>
       <div class="filter-panel">
         <p class="filter-label">タイプ</p>
@@ -399,7 +398,7 @@ Summary: TYPEラベルとタグを日本語にする
         </div>
         <p class="filter-status" id="filter-status" aria-live="polite"></p>
       </div>
-      <div class="card-grid" aria-label="Review">
+      <div class="card-grid" aria-label="紹介">
         {{CARD_GRID}}
       </div>
     </section>
@@ -407,9 +406,9 @@ Summary: TYPEラベルとタグを日本語にする
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <strong>Yoru no Libre X</strong>
-      <div>FANZA review. This site has affiliate ads.</div>
-      <div>&copy; {{YEAR}} Yoru no Libre X</div>
+      <strong>夜のリブレ</strong>
+      <div>FANZAの紹介。このサイトにはアフィリエイト広告が含まれます。</div>
+      <div>&copy; {{YEAR}} 夜のリブレ</div>
     </div>
   </footer>
   <script>

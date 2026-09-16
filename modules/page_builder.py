@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.12.0
+# Version: 2.13.0
 # Date: 2026-09-16
-# Summary: 記事下に同じシリーズ・同じ女優の関連作品を出す
+# Summary: サイト名と案内文を日本語にする
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -34,7 +34,7 @@ DOCS_DIR_NAME = "docs"
 COVERS_DIR_NAME = "covers"
 TEMPLATES_DIR_NAME = "templates"
 INDEX_ENTRIES_FILE = ".index_entries.json"
-SITE_NAME = "Yoru no Libre X"
+SITE_NAME = "夜のリブレ"
 JACKET_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -435,7 +435,7 @@ def _render_card(entry: IndexEntry) -> str:
         f"<h3>{title}</h3>"
         f'<div class="mood-row">{mood_pills}</div>'
         f'<p class="summary">{summary}</p>'
-        f'<div class="more">Read →</div>'
+        f'<div class="more">続きを見る</div>'
         f"</div></a>"
     )
 
@@ -469,14 +469,14 @@ def _render_index_page(entries: list[IndexEntry], *, pages_base_url: str) -> str
     if sorted_entries:
         cards = "\n".join(_render_card(e) for e in sorted_entries)
     else:
-        cards = '<p class="empty">No review yet. Check after the next update.</p>'
+        cards = '<p class="empty">まだ紹介はありません。次の更新まで待ってください。</p>'
 
     template = _load_template("index.html")
     return _apply_template(
         template,
         {
             "PAGE_TITLE": SITE_NAME,
-            "META_DESCRIPTION": "Short FANZA review. Read a bit, then open FANZA.",
+            "META_DESCRIPTION": "今夜見る一本を短く紹介。あとは公式で。",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/"),
             "MOOD_FILTERS": _render_mood_filters(sorted_entries),
             "CARD_GRID": cards,
