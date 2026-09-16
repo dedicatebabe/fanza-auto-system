@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.14.0
+# Version: 2.15.0
 # Date: 2026-09-16
-# Summary: 公式待機一覧のチャット入口を付ける
+# Summary: トップと記事下のチャット入口を強くする
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -39,8 +39,18 @@ CHAT_PAGE_FILENAME = "chat.html"
 SITE_NAME = "夜のリブレ"
 AFFILIATE_GATE = "https://al.fanza.co.jp/"
 LIVECHAT_FLOORS = (
-    ("アダルト", "https://livechat.dmm.co.jp/acha"),
-    ("人妻", "https://livechat.dmm.co.jp/macha"),
+    (
+        "adult",
+        "アダルト",
+        "https://livechat.dmm.co.jp/acha",
+        "今いる人の顔が一覧になる。",
+    ),
+    (
+        "married",
+        "人妻",
+        "https://livechat.dmm.co.jp/macha",
+        "人妻フロアの待機一覧。",
+    ),
 )
 JACKET_HEADERS = {
     "User-Agent": (
@@ -292,15 +302,21 @@ def _render_chat_cards(affiliate_id: str) -> str:
     if not af_id:
         return ""
     cards: list[str] = []
-    for label, dest in LIVECHAT_FLOORS:
+    for slug, label, dest, blurb in LIVECHAT_FLOORS:
         href = html.escape(wrap_affiliate_url(dest, af_id), quote=True)
         if not href:
             continue
         title = html.escape(label)
+        body = html.escape(blurb)
+        slug_cls = html.escape(slug)
         cards.append(
-            f'<a class="chat-card" href="{href}" rel="nofollow sponsored noopener" '
-            f'target="_blank"><p class="chat-kicker">FANZA</p><h3>{title}</h3>'
-            f"<p>待機中の一覧</p></a>"
+            f'<a class="chat-card chat-card-{slug_cls}" href="{href}" '
+            f'rel="nofollow sponsored noopener" target="_blank">'
+            f'<div class="chat-visual" aria-hidden="true">'
+            f'<span class="chat-live">待機中</span></div>'
+            f'<div class="chat-body"><p class="chat-kicker">FANZAライブチャット</p>'
+            f"<h3>{title}</h3><p>{body}</p>"
+            f'<span class="chat-go">顔を見て入る</span></div></a>'
         )
     return "\n".join(cards)
 
@@ -316,9 +332,26 @@ def render_chat_block(affiliate_id: str, *, more_link: bool = True) -> str:
     return (
         '<section class="chat-block">\n'
         "  <h2>今いるチャット</h2>\n"
-        '  <p class="chat-lead">公式の待機一覧。顔を見てから入る。</p>\n'
+        '  <p class="chat-lead">公式の顔が一覧になる。見てから入る。</p>\n'
         f'  <div class="chat-grid">\n    {cards}\n  </div>\n'
         f"  {more}\n"
+        "</section>\n"
+    )
+
+
+def render_index_chat_strip(affiliate_id: str) -> str:
+    """トップ用のチャット入口。IDが無ければ出さない。"""
+    cards = _render_chat_cards(affiliate_id)
+    if not cards:
+        return ""
+    return (
+        '<section class="chat-strip" id="chat">\n'
+        '  <div class="section-head">\n'
+        "    <h2>今いるチャット</h2>\n"
+        '    <a class="section-more" href="chat.html">入口へ</a>\n'
+        "  </div>\n"
+        '  <p class="chat-lead">公式の待機一覧。今いる人の顔から選ぶ。</p>\n'
+        f'  <div class="chat-grid">\n    {cards}\n  </div>\n'
         "</section>\n"
     )
 
@@ -371,7 +404,7 @@ def _write_chat_page(
         template,
         {
             "PAGE_TITLE": "今いるチャット",
-            "META_DESCRIPTION": "公式の待機一覧。顔を見てから入る。",
+            "META_DESCRIPTION": "公式の待機一覧。今いる人の顔から選ぶ。",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/chat.html"),
             "CHAT_CARDS": cards,
             "YEAR": str(datetime.now(timezone.utc).year),
@@ -571,7 +604,12 @@ def _render_mood_filters(entries: list[IndexEntry]) -> str:
     return "\n".join(chips)
 
 
-def _render_index_page(entries: list[IndexEntry], *, pages_base_url: str) -> str:
+def _render_index_page(
+    entries: list[IndexEntry],
+    *,
+    pages_base_url: str,
+    affiliate_id: str = "",
+) -> str:
     """トップ index.html をテンプレートから生成する。"""
     sorted_entries = sorted(entries, key=lambda e: e.created_at, reverse=True)
     if sorted_entries:
@@ -586,6 +624,7 @@ def _render_index_page(entries: list[IndexEntry], *, pages_base_url: str) -> str
             "PAGE_TITLE": SITE_NAME,
             "META_DESCRIPTION": "今夜見る一本を短く紹介。あとは公式で。",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/"),
+            "CHAT_STRIP": render_index_chat_strip(affiliate_id),
             "MOOD_FILTERS": _render_mood_filters(sorted_entries),
             "CARD_GRID": cards,
             "YEAR": str(datetime.now(timezone.utc).year),
@@ -656,7 +695,11 @@ def write_article_and_update_index(
     )
     _save_index_entries(docs_path, entries)
 
-    index_html = _render_index_page(entries, pages_base_url=github_pages_base_url)
+    index_html = _render_index_page(
+        entries,
+        pages_base_url=github_pages_base_url,
+        affiliate_id=affiliate_id,
+    )
     (docs_path / "index.html").write_text(index_html, encoding="utf-8")
     _write_chat_page(
         docs_path,
@@ -815,8 +858,6 @@ def refresh_published_cards(
         logger.info("記事を現行テンプレで再出力 content_id=%s", entry.content_id)
 
     _save_index_entries(docs_path, refreshed)
-    index_html = _render_index_page(refreshed, pages_base_url=github_pages_base_url)
-    (docs_path / "index.html").write_text(index_html, encoding="utf-8")
     chat_affiliate_id = _resolve_affiliate_id(dmm_affiliate_id)
     if not chat_affiliate_id and refreshed:
         sample_path = docs_path / refreshed[0].article_filename
@@ -824,6 +865,12 @@ def refresh_published_cards(
             chat_affiliate_id = _resolve_affiliate_id(
                 _affiliate_url_from_html(sample_path.read_text(encoding="utf-8"))
             )
+    index_html = _render_index_page(
+        refreshed,
+        pages_base_url=github_pages_base_url,
+        affiliate_id=chat_affiliate_id,
+    )
+    (docs_path / "index.html").write_text(index_html, encoding="utf-8")
     _write_chat_page(
         docs_path,
         pages_base_url=github_pages_base_url,

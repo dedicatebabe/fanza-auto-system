@@ -1,7 +1,7 @@
 <!--
-Version: 2.11.0
+Version: 2.12.0
 Date: 2026-09-16
-Summary: 公式待機一覧のチャット入口を付ける
+Summary: 記事下チャットを顔見せのCTAにする
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -113,6 +113,18 @@ Summary: 公式待機一覧のチャット入口を付ける
     }
     .nav-link:hover,
     .nav-link.is-current { color: var(--gold); }
+    .nav-chat {
+      padding: 0.38rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 180, 131, 0.45);
+      background: rgba(212, 180, 131, 0.14);
+      color: var(--gold);
+    }
+    .nav-chat:hover,
+    .nav-chat.is-current {
+      background: rgba(212, 180, 131, 0.22);
+      color: var(--gold);
+    }
     .main { padding: 1.8rem 0 5rem; }
     .article-shell {
       overflow: hidden;
@@ -317,18 +329,22 @@ Summary: 公式待機一覧のチャット入口を付ける
     }
     .chat-block {
       margin-top: 2.4rem;
+      padding: 1.25rem 1.15rem 1.35rem;
+      border-radius: 18px;
+      border: 1px solid rgba(212, 180, 131, 0.35);
+      background:
+        linear-gradient(160deg, rgba(212, 180, 131, 0.16), rgba(20, 24, 34, 0.95) 55%);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
     }
     .chat-block h2 {
-      margin: 0 0 0.55rem;
-      padding-bottom: 0.45rem;
-      border-bottom: 1px solid var(--line);
+      margin: 0 0 0.45rem;
       font-family: "Shippori Mincho", serif;
       font-size: 1.12rem;
       font-weight: 600;
     }
     .chat-lead {
       margin: 0 0 0.95rem;
-      color: var(--muted);
+      color: rgba(243, 241, 236, 0.78);
       font-size: 0.9rem;
     }
     .chat-grid {
@@ -337,17 +353,63 @@ Summary: 公式待機一覧のチャット入口を付ける
       gap: 0.85rem;
     }
     .chat-card {
-      display: grid;
-      gap: 0.25rem;
-      padding: 1.05rem 1.1rem 1.15rem;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       border-radius: 16px;
       border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(8, 10, 14, 0.45);
       transition: transform 0.2s ease, border-color 0.2s ease;
     }
     .chat-card:hover {
       transform: translateY(-3px);
-      border-color: rgba(212, 180, 131, 0.4);
+      border-color: rgba(212, 180, 131, 0.45);
+    }
+    .chat-visual {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      background: #0b0d12;
+    }
+    .chat-card-adult .chat-visual {
+      background:
+        radial-gradient(ellipse 52% 72% at 30% 40%, rgba(212, 180, 131, 0.38), transparent 58%),
+        radial-gradient(ellipse 42% 62% at 74% 58%, rgba(160, 78, 108, 0.5), transparent 52%),
+        linear-gradient(160deg, #2a1c24, #12151c);
+    }
+    .chat-card-married .chat-visual {
+      background:
+        radial-gradient(ellipse 52% 72% at 34% 38%, rgba(210, 160, 130, 0.42), transparent 58%),
+        radial-gradient(ellipse 44% 64% at 72% 62%, rgba(118, 68, 88, 0.52), transparent 52%),
+        linear-gradient(160deg, #261820, #12151c);
+    }
+    .chat-live {
+      position: absolute;
+      left: 0.7rem;
+      top: 0.7rem;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(12, 14, 18, 0.72);
+      color: var(--gold);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+    }
+    .chat-live::before {
+      content: "";
+      width: 0.45em;
+      height: 0.45em;
+      margin-right: 0.4em;
+      border-radius: 50%;
+      background: #d4b483;
+      box-shadow: 0 0 0 0 rgba(212, 180, 131, 0.65);
+      animation: livepulse 1.6s ease infinite;
+    }
+    .chat-body {
+      display: grid;
+      gap: 0.22rem;
+      padding: 0.85rem 0.95rem 1rem;
     }
     .chat-kicker {
       margin: 0;
@@ -361,10 +423,24 @@ Summary: 公式待機一覧のチャット入口を付ける
       font-size: 1.05rem;
       font-weight: 600;
     }
-    .chat-card p:last-child {
+    .chat-body p {
       margin: 0;
       color: var(--muted);
       font-size: 0.86rem;
+    }
+    .chat-go {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 44px;
+      margin-top: 0.5rem;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #e6c79a, #d4b483 45%, #b8945f);
+      color: #1a140c;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
     }
     .chat-more {
       display: inline-block;
@@ -392,6 +468,11 @@ Summary: 公式待機一覧のチャット入口を付ける
       from { opacity: 0; transform: translateY(14px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes livepulse {
+      0% { box-shadow: 0 0 0 0 rgba(212, 180, 131, 0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(212, 180, 131, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(212, 180, 131, 0); }
+    }
     @media (max-width: 640px) {
       .article-body { padding: 1.25rem 1rem 1.6rem; }
       .cta { font-size: 0.98rem; min-height: 54px; }
@@ -412,7 +493,7 @@ Summary: 公式待機一覧のチャット入口を付ける
       </a>
       <nav class="site-nav">
         <a class="nav-link" href="index.html">紹介</a>
-        <a class="nav-link" href="chat.html">チャット</a>
+        <a class="nav-link nav-chat" href="chat.html">チャット</a>
       </nav>
     </div>
   </header>
@@ -467,10 +548,10 @@ Summary: 公式待機一覧のチャット入口を付ける
 
         <section class="chat-block">
   <h2>今いるチャット</h2>
-  <p class="chat-lead">公式の待機一覧。顔を見てから入る。</p>
+  <p class="chat-lead">公式の顔が一覧になる。見てから入る。</p>
   <div class="chat-grid">
-    <a class="chat-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Flivechat.dmm.co.jp%2Facha&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><p class="chat-kicker">FANZA</p><h3>アダルト</h3><p>待機中の一覧</p></a>
-<a class="chat-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Flivechat.dmm.co.jp%2Fmacha&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><p class="chat-kicker">FANZA</p><h3>人妻</h3><p>待機中の一覧</p></a>
+    <a class="chat-card chat-card-adult" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Flivechat.dmm.co.jp%2Facha&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="chat-visual" aria-hidden="true"><span class="chat-live">待機中</span></div><div class="chat-body"><p class="chat-kicker">FANZAライブチャット</p><h3>アダルト</h3><p>今いる人の顔が一覧になる。</p><span class="chat-go">顔を見て入る</span></div></a>
+<a class="chat-card chat-card-married" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Flivechat.dmm.co.jp%2Fmacha&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="chat-visual" aria-hidden="true"><span class="chat-live">待機中</span></div><div class="chat-body"><p class="chat-kicker">FANZAライブチャット</p><h3>人妻</h3><p>人妻フロアの待機一覧。</p><span class="chat-go">顔を見て入る</span></div></a>
   </div>
   <a class="chat-more" href="chat.html">チャットの入口へ</a>
 </section>
