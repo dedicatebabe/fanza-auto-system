@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.10.0
+# Version: 2.11.0
 # Date: 2026-09-16
-# Summary: 公式commentを記事再生成でも引き継ぐ
+# Summary: TYPEを公式ジャンルにし、ReviewはX投稿文で再生成
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -17,9 +17,13 @@ from pathlib import Path
 
 import requests
 
-from modules.ai_generator import extract_card_summary, generate_article_html
+from modules.ai_generator import (
+    extract_card_summary,
+    generate_article_html,
+    review_text_for_article,
+)
 from modules.dmm_api import FanzaItem
-from modules.moods import MOOD_OPTIONS, infer_moods
+from modules.moods import infer_moods
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +53,9 @@ class IndexEntry:
     image_url: str = ""
     summary: str = ""
     moods: list[str] = field(default_factory=list)
+    actresses: list[str] = field(default_factory=list)
+    maker: str = ""
+    genres: list[str] = field(default_factory=list)
 
 
 def _project_root() -> Path:
@@ -224,6 +231,10 @@ def _load_index_entries(docs_path: Path) -> list[IndexEntry]:
         created = str(row.get("created_at", "")).strip()
         raw_moods = row.get("moods") or []
         moods = [str(m).strip() for m in raw_moods if str(m).strip()]
+        raw_actresses = row.get("actresses") or []
+        actresses = [str(a).strip() for a in raw_actresses if str(a).strip()]
+        raw_genres = row.get("genres") or []
+        genres = [str(g).strip() for g in raw_genres if str(g).strip()]
         if cid and filename:
             entries.append(
                 IndexEntry(
@@ -234,6 +245,9 @@ def _load_index_entries(docs_path: Path) -> list[IndexEntry]:
                     image_url=str(row.get("image_url", "") or ""),
                     summary=str(row.get("summary", "") or ""),
                     moods=moods,
+                    actresses=actresses,
+                    maker=str(row.get("maker", "") or ""),
+                    genres=genres,
                 )
             )
     return entries
@@ -251,6 +265,9 @@ def _save_index_entries(docs_path: Path, entries: list[IndexEntry]) -> None:
                 "image_url": e.image_url,
                 "summary": e.summary,
                 "moods": e.moods,
+                "actresses": e.actresses,
+                "maker": e.maker,
+                "genres": e.genres,
             }
             for e in entries
         ]
@@ -327,7 +344,7 @@ def _render_card(entry: IndexEntry) -> str:
     href = html.escape(entry.article_filename)
     date_str = html.escape(entry.created_at[:10] if entry.created_at else "")
     summary = html.escape(entry.summary or "レビュー記事を見る")
-    moods = [m for m in entry.moods if m in MOOD_OPTIONS] or ["Short"]
+    moods = [m.strip() for m in entry.moods if str(m).strip()]
     moods_attr = html.escape(",".join(moods))
     search_blob = html.escape(
         f"{entry.title} {entry.summary} {' '.join(moods)}".lower()
@@ -355,11 +372,22 @@ def _render_card(entry: IndexEntry) -> str:
     )
 
 
-def _render_mood_filters() -> str:
+def _type_tags_from_entries(entries: list[IndexEntry]) -> list[str]:
+    """掲載記事の公式ジャンルをTYPEチップにする。"""
+    seen: list[str] = []
+    for entry in entries:
+        for mood in entry.moods:
+            tag = str(mood).strip()
+            if tag and tag not in seen:
+                seen.append(tag)
+    return sorted(seen)
+
+
+def _render_mood_filters(entries: list[IndexEntry]) -> str:
     chips = [
-        '<button type="button" class="mood-chip is-active" data-mood="all" aria-pressed="true">All</button>'
+        '<button type="button" class="mood-chip is-active" data-mood="all" aria-pressed="true">すべて</button>'
     ]
-    for mood in MOOD_OPTIONS:
+    for mood in _type_tags_from_entries(entries):
         chips.append(
             f'<button type="button" class="mood-chip" data-mood="{html.escape(mood)}" '
             f'aria-pressed="false">{html.escape(mood)}</button>'
@@ -382,7 +410,7 @@ def _render_index_page(entries: list[IndexEntry], *, pages_base_url: str) -> str
             "PAGE_TITLE": SITE_NAME,
             "META_DESCRIPTION": "Short FANZA review. Read a bit, then open FANZA.",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/"),
-            "MOOD_FILTERS": _render_mood_filters(),
+            "MOOD_FILTERS": _render_mood_filters(sorted_entries),
             "CARD_GRID": cards,
             "YEAR": str(datetime.now(timezone.utc).year),
         },
@@ -439,6 +467,9 @@ def write_article_and_update_index(
             image_url=card_image,
             summary=card_summary,
             moods=mood_tags,
+            actresses=list(priced_item.actresses),
+            maker=priced_item.maker,
+            genres=list(priced_item.genres),
         )
     )
     _save_index_entries(docs_path, entries)
@@ -485,9 +516,13 @@ def _item_from_published_page(entry: IndexEntry, page_html: str) -> FanzaItem:
     genres = tuple(
         html.unescape(g) for g in re.findall(r"<li>(.*?)</li>", body) if g.strip()
     )
+    if not genres:
+        genres = tuple(entry.genres)
     actress_raw = _parse_credit_value(body, "出演").replace("、ほか", "")
     actresses = tuple(p.strip() for p in actress_raw.split("、") if p.strip())
-    maker = _parse_credit_value(body, "メーカー")
+    if not actresses:
+        actresses = tuple(entry.actresses)
+    maker = _parse_credit_value(body, "メーカー") or entry.maker
     source_image = entry.image_url
     if source_image.startswith(COVERS_DIR_NAME + "/"):
         source_image = ""
@@ -504,7 +539,7 @@ def _item_from_published_page(entry: IndexEntry, page_html: str) -> FanzaItem:
         list_price=list_price,
         sale_price=sale_price,
         discount_percent=discount if discount is not None else (
-            30.0 if any(m in entry.moods for m in ("Sale", "On sale", "セール特価")) else None
+            30.0 if "セール" in entry.moods else None
         ),
         review_average=None,
         review_count=None,
@@ -515,9 +550,13 @@ def _item_from_published_page(entry: IndexEntry, page_html: str) -> FanzaItem:
     )
 
 
-def refresh_published_cards(*, github_pages_base_url: str) -> int:
+def refresh_published_cards(
+    *,
+    github_pages_base_url: str,
+    gemini_client=None,
+) -> int:
     """
-    既存記事を現行テンプレで書き直し、カード要約と気分タグも更新する。
+    既存記事を現行テンプレで書き直し、カード要約とTYPEタグも更新する。
 
     戻り値: 更新した件数
     """
@@ -537,11 +576,19 @@ def refresh_published_cards(*, github_pages_base_url: str) -> int:
         stub = _item_from_published_page(entry, page_html)
         if stub.image_url:
             save_jacket_cover(stub.content_id, stub.image_url)
-        body = generate_article_html(stub)
+        page_url = build_cushion_page_url(github_pages_base_url, stub.content_id)
+        review_text = review_text_for_article(
+            stub,
+            page_url=page_url,
+            client=gemini_client,
+        )
+        body = generate_article_html(stub, review_text=review_text)
         write_article_and_update_index(
             stub,
             body,
             github_pages_base_url=github_pages_base_url,
+            summary=extract_card_summary(body, stub, review_text=review_text),
+            moods=infer_moods(stub, summary=review_text),
             created_at=entry.created_at,
         )
         latest = [

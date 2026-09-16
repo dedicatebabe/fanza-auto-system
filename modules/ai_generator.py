@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.17.0
+# Version: 2.18.0
 # Date: 2026-09-16
-# Summary: Reviewの定型文を公式ジャンル1文にし、For youを出さない
+# Summary: ReviewはX投稿文、Pointはジャンル、Lastは出さない
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -46,7 +46,8 @@ BANNED_X_HOOKS = (
 )
 ARTICLE_HEADING_FIXES = (
     ("In a nutshell", "Review"),
-    ("Highlights", "Point"),
+    ("Highlights", "ジャンル"),
+    ("Point", "ジャンル"),
     ("Who it's for", "For you"),
     ("One caveat", "Note"),
     ("Wrap-up", "Last"),
@@ -349,6 +350,11 @@ def _credit_lines(item: FanzaItem) -> list[str]:
     return lines
 
 
+def genre_tags_for(item: FanzaItem) -> list[str]:
+    """TYPEタグおよびジャンル欄に出す公式ジャンル。"""
+    return [p for p in _point_items(item) if p != "公式ページで確認"]
+
+
 def _point_items(item: FanzaItem) -> list[str]:
     """見どころは公式ジャンル名。画質タグは後ろに回す。"""
     genres = _item_genres(item)
@@ -380,20 +386,63 @@ def _point_items(item: FanzaItem) -> list[str]:
     return points[:5]
 
 
-def _template_article_html(item: FanzaItem) -> str:
-    """API属性の型枠HTML。観たレビューは書かない。"""
-    credits = _credit_lines(item)
-    credit_html = "".join(f"<p>{html.escape(line)}</p>\n" for line in credits)
-    situation = html.escape(_situation_line(item))
+def x_post_body_for_article(tweet_text: str) -> str:
+    """X投稿からURLとハッシュタグを除いた本文。"""
+    lines: list[str] = []
+    for raw in (tweet_text or "").replace("\r\n", "\n").split("\n"):
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            continue
+        lowered = line.lower()
+        if line.startswith("http://") or line.startswith("https://"):
+            continue
+        if "fanza.co.jp" in lowered or "dmm.co.jp" in lowered:
+            continue
+        if "github.io" in lowered:
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
+def review_text_for_article(
+    item: FanzaItem,
+    *,
+    page_url: str,
+    client: genai.Client | None = None,
+) -> str:
+    """記事Review用。Xと同じ生成文。失敗時は公式紹介の切り出し。"""
+    if client is not None:
+        tweet = generate_x_post_text(client, item, cushion_page_url=page_url)
+        body = x_post_body_for_article(tweet)
+        if body:
+            return body
+    return x_post_body_for_article(_fallback_x_post_text(item, page_url=page_url))
+
+
+def _review_html(item: FanzaItem, review_text: str) -> str:
+    """Review本文を段落HTMLにする。"""
+    body = (review_text or "").strip() or _fallback_x_hook(item)
+    parts: list[str] = []
+    for block in body.split("\n"):
+        line = block.strip()
+        if line:
+            parts.append(f"<p>{html.escape(line)}</p>")
+    if not parts:
+        parts.append(f"<p>{html.escape(_fallback_x_hook(item))}</p>")
+    return "\n".join(parts) + "\n"
+
+
+def _template_article_html(item: FanzaItem, *, review_text: str = "") -> str:
+    """ReviewはX投稿文、ジャンルは公式タグ。Lastは出さない。"""
+    review = _review_html(item, review_text)
     lis = "\n  ".join(f"<li>{html.escape(p)}</li>" for p in _point_items(item))
     return (
         f"<h2>Review</h2>\n"
-        f"{credit_html}"
-        f"<p>{situation}</p>\n"
-        f"<h2>Point</h2>\n"
+        f"{review}"
+        f"<h2>ジャンル</h2>\n"
         f"<ul>\n  {lis}\n</ul>\n"
-        f"<h2>Last</h2>\n"
-        f"<p>詳細は公式ページへ。</p>\n"
     )
 
 
@@ -518,6 +567,12 @@ def _normalize_article_headings(raw_html: str) -> str:
         html_body,
         flags=re.IGNORECASE | re.DOTALL,
     )
+    html_body = re.sub(
+        r"<h2>Last</h2>\s*<p>.*?</p>\s*",
+        "",
+        html_body,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     return html_body
 
 
@@ -545,25 +600,43 @@ def _plain_text_from_html(raw_html: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def extract_card_summary(article_html_body: str, item: FanzaItem) -> str:
-    """
-    カード用要約。
+def extract_card_summary(
+    article_html_body: str,
+    item: FanzaItem,
+    *,
+    review_text: str = "",
+) -> str:
+    """カード用要約。Review（X投稿文）を使う。"""
+    text = (review_text or "").strip()
+    if not text:
+        match = re.search(
+            r"<h2>Review</h2>\s*(.*?)\s*<h2>",
+            article_html_body or "",
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+        if match:
+            text = _plain_text_from_html(match.group(1))
+    if not text:
+        text = _fallback_x_hook(item)
+    return re.sub(r"\s+", " ", text).strip()
 
-    API属性の型枠1文。タイトル全文・ジャンル列は出さない。
-    """
-    _ = article_html_body
-    return _situation_line(item)
 
-
-def generate_article_html(item: FanzaItem, client: genai.Client | None = None) -> str:
+def generate_article_html(
+    item: FanzaItem,
+    client: genai.Client | None = None,
+    *,
+    review_text: str = "",
+) -> str:
     """
     GitHub Pages 用の HTML 本文（fragment）を生成する。
 
-    Gemini は使わない。APIのジャンル・出演・メーカーを型枠に入れる。
+    Review は X 投稿と同じ文章。ジャンルは公式タグ。
     """
     _ = client
     logger.info("記事HTMLを型枠で生成 content_id=%s", item.content_id)
-    return _normalize_article_headings(_template_article_html(item))
+    return _normalize_article_headings(
+        _template_article_html(item, review_text=review_text)
+    )
 
 
 def _normalize_x_post(text: str, *, page_url: str) -> str:

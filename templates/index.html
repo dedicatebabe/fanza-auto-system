@@ -1,7 +1,7 @@
 <!--
-Version: 2.7.0
-Date: 2026-09-14
-Summary: 見出しを日本人にもわかる英語に
+Version: 2.8.0
+Date: 2026-09-16
+Summary: TYPEラベルとタグを日本語にする
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -389,13 +389,13 @@ Summary: 見出しを日本人にもわかる英語に
         <span>Daily update</span>
       </div>
       <div class="filter-panel">
-        <p class="filter-label">Type</p>
-        <div class="mood-chips" role="group" aria-label="Filter by type">
+        <p class="filter-label">タイプ</p>
+        <div class="mood-chips" role="group" aria-label="ジャンルで絞り込み">
           {{MOOD_FILTERS}}
         </div>
         <div class="search-wrap">
-          <label for="mood-search" class="filter-label">Search</label>
-          <input id="mood-search" type="search" placeholder="ntr, sale, vr..." autocomplete="off">
+          <label for="mood-search" class="filter-label">検索</label>
+          <input id="mood-search" type="search" placeholder="ハーレム、NTR、VR..." autocomplete="off">
         </div>
         <p class="filter-status" id="filter-status" aria-live="polite"></p>
       </div>
@@ -434,9 +434,9 @@ Summary: 見出しを日本人にもわかる英語に
         });
         if (status) {
           if (activeMood === "all" && !q) {
-            status.textContent = visible + " review";
+            status.textContent = visible + "件";
           } else {
-            status.textContent = visible + " hit";
+            status.textContent = visible + "件ヒット";
           }
         }
       }

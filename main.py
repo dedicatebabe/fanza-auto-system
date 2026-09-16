@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.8.0
+# Version: 2.9.0
 # Date: 2026-09-16
-# Summary: X投稿にローカルジャケットを添付する
+# Summary: 記事ReviewにX投稿文を入れ、TYPEは公式ジャンルにする
 # ==========================================
 """
 FANZA（DMM API v3）のセール・人気作品を取得し、
@@ -25,6 +25,7 @@ from modules.ai_generator import (
     extract_card_summary,
     generate_article_html,
     generate_x_post_text,
+    x_post_body_for_article,
 )
 from modules.dmm_api import FetchMode, fetch_fanza_item_for_posting
 from modules.moods import infer_moods
@@ -143,7 +144,12 @@ def main() -> int:
     try:
         if args.refresh_index:
             pages_base = require_env("BASE_URL")
-            count = refresh_published_cards(github_pages_base_url=pages_base)
+            gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+            gemini_client = create_gemini_client(gemini_key) if gemini_key else None
+            count = refresh_published_cards(
+                github_pages_base_url=pages_base,
+                gemini_client=gemini_client,
+            )
             logger.info("カード再生成が完了しました（%s件）", count)
             return 0
 
@@ -178,16 +184,21 @@ def main() -> int:
         logger.info("個別記事 URL: %s", article_url)
 
         gemini_client = create_gemini_client(gemini_key)
-        article_html = generate_article_html(item)
-        card_summary = extract_card_summary(article_html, item)
-        moods = infer_moods(item, summary=card_summary)
-        logger.info("気分タグ: %s", moods)
         tweet_text = generate_x_post_text(
             gemini_client,
             item,
             cushion_page_url=article_url,
         )
         logger.info("生成ツイート:\n%s", tweet_text)
+        review_text = x_post_body_for_article(tweet_text)
+        article_html = generate_article_html(item, review_text=review_text)
+        card_summary = extract_card_summary(
+            article_html,
+            item,
+            review_text=review_text,
+        )
+        moods = infer_moods(item, summary=card_summary)
+        logger.info("TYPEタグ: %s", moods)
 
         write_article_and_update_index(
             item,

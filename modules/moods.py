@@ -1,118 +1,24 @@
 # ==========================================
-# Version: 1.4.0
-# Date: 2026-09-14
-# Summary: 気分タグを日本人にもわかる英語に
+# Version: 1.5.0
+# Date: 2026-09-16
+# Summary: TYPEタグを公式ジャンルの日本語にする
 # ==========================================
-"""気分（mood）タグの定義と推定。"""
+"""TYPEタグ（公式ジャンル）の付与。"""
 
 from __future__ import annotations
 
+from modules.ai_generator import genre_tags_for
 from modules.dmm_api import FanzaItem
 
-# 公式ジャンルのコピーではなく、編集メディア側の気分タグ
-MOOD_OPTIONS: tuple[str, ...] = (
-    "Love",
-    "NTR",
-    "Short",
-    "Actress",
-    "Story",
-    "Sale",
-)
-
-
-def infer_moods_from_text(
-    text: str,
-    *,
-    discount_percent: float | None = None,
-) -> list[str]:
-    """
-    テキストと割引率から気分タグを推定する。
-
-    背徳に当たる場合は、恋人／彼女などの甘め語を無視する。
-    """
-    blob = (text or "").lower()
-    moods: list[str] = []
-
-    if discount_percent is not None and discount_percent >= 30:
-        moods.append("Sale")
-    elif "セール" in blob or "%off" in blob or "% off" in blob or "％off" in blob or "on sale" in blob or "sale" in blob:
-        moods.append("Sale")
-
-    is_haitoku = any(
-        k in blob
-        for k in (
-            "ntr",
-            "寝取",
-            "寝取り",
-            "不倫",
-            "上司",
-            "相部屋",
-            "裏切り",
-            "禁断",
-            "人妻",
-            "浮気",
-            "内緒",
-            "寝取られ",
-            "恋人の目の前",
-            "彼氏の目の前",
-            "好きぴ",
-            "好きピ",
-        )
-    )
-    if is_haitoku:
-        moods.append("NTR")
-
-    if not is_haitoku and any(
-        k in blob
-        for k in ("いちゃ", "いちゃラブ", "純愛", "甘め", "デート", "sweet", "love")
-    ):
-        moods.append("Love")
-
-    if any(
-        k in blob
-        for k in (
-            "ベスト",
-            "総集編",
-            "短時間",
-            "ダイジェスト",
-            "4時間",
-            "8時間",
-            "18時間",
-            "コンプリート",
-            "1116分",
-        )
-    ):
-        moods.append("Short")
-
-    if any(
-        k in blob
-        for k in ("専属", "デビュー", "debut", "主演", "単体")
-    ):
-        moods.append("Actress")
-
-    if any(
-        k in blob
-        for k in ("ドラマ", "物語", "ストーリー", "シナリオ", "感動")
-    ):
-        moods.append("Story")
-
-    if not moods:
-        moods.append("Actress" if "出演" in blob else "Short")
-
-    ordered: list[str] = []
-    for mood in MOOD_OPTIONS:
-        if mood in moods and mood not in ordered:
-            ordered.append(mood)
-    return ordered[:3]
+# チップは記事ごとの公式ジャンルから動的に出す。
+MOOD_OPTIONS: tuple[str, ...] = ()
 
 
 def infer_moods(item: FanzaItem, *, summary: str = "") -> list[str]:
     """
-    タイトル・概要・割引から気分タグを推定する。
+    公式ジャンルをTYPEタグにする。
 
-    Gemini に依存せず安定して付与する（公式ジャンル名は使わない）。
+    Love / Short などの英語気分タグは使わない。
     """
-    return infer_moods_from_text(
-        f"{item.title}\n{item.description}\n{summary}",
-        discount_percent=item.discount_percent,
-    )
+    _ = summary
+    return genre_tags_for(item)
