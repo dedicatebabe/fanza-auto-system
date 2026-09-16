@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.16.0
+# Version: 2.17.0
 # Date: 2026-09-16
-# Summary: X文をAVソムリエの切り口1本で生成する
+# Summary: Reviewの定型文を公式ジャンル1文にし、For youを出さない
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -285,6 +285,21 @@ def _hay_has(hay: str, *keys: str) -> bool:
     return any(k in hay for k in keys)
 
 
+SKIP_GENRES = {
+    "ハイビジョン",
+    "4K",
+    "独占配信",
+    "VR専用",
+    "ハイクオリティVR",
+    "単体作品",
+}
+SKIP_SITUATION_GENRES = SKIP_GENRES | {
+    "16時間以上作品",
+    "4時間以上作品",
+    "2時間以上作品",
+}
+
+
 def _situation_line(item: FanzaItem) -> str:
     """API属性から1文。観た感想は書かない。"""
     hay = _item_hay(item)
@@ -312,7 +327,10 @@ def _situation_line(item: FanzaItem) -> str:
         if _hay_has(hay, "兄嫁", "義姉", "姉・妹"):
             return "母乳。兄嫁のシチュ。"
         return "母乳もの。"
-    return "ジャンルは公式のタグどおり。詳細はFANZAで。"
+    genres = [g for g in _item_genres(item) if g not in SKIP_SITUATION_GENRES]
+    if genres:
+        return "、".join(genres[:3]) + "。"
+    return "公式のジャンルはPointへ。"
 
 
 def _credit_lines(item: FanzaItem) -> list[str]:
@@ -329,16 +347,6 @@ def _credit_lines(item: FanzaItem) -> list[str]:
     if maker:
         lines.append("メーカー: " + maker)
     return lines
-
-
-SKIP_GENRES = {
-    "ハイビジョン",
-    "4K",
-    "独占配信",
-    "VR専用",
-    "ハイクオリティVR",
-    "単体作品",
-}
 
 
 def _point_items(item: FanzaItem) -> list[str]:
@@ -368,7 +376,7 @@ def _point_items(item: FanzaItem) -> list[str]:
         if extra not in points:
             points.insert(0, extra)
     if not points:
-        points.append("詳細はFANZAで")
+        points.append("公式ページで確認")
     return points[:5]
 
 
