@@ -1,7 +1,7 @@
 <!--
-Version: 2.10.0
+Version: 2.11.0
 Date: 2026-09-16
-Summary: トップのメイン見出しを英語に戻す
+Summary: ヘッダーからチャット入口へ結ぶ
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -107,12 +107,18 @@ Summary: トップのメイン見出しを英語に戻す
       font-size: 0.76rem;
       letter-spacing: 0.06em;
     }
+    .site-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.15rem;
+    }
     .nav-link {
       color: var(--muted);
       font-size: 0.88rem;
       letter-spacing: 0.04em;
     }
-    .nav-link:hover { color: var(--gold); }
+    .nav-link:hover,
+    .nav-link.is-current { color: var(--gold); }
     .main { padding: 2.6rem 0 5rem; }
     .hero {
       display: grid;
@@ -371,7 +377,10 @@ Summary: トップのメイン見出しを英語に戻す
           <span>今夜の一本</span>
         </div>
       </a>
-      <a class="nav-link" href="#reviews">紹介</a>
+      <nav class="site-nav">
+        <a class="nav-link" href="#reviews">紹介</a>
+        <a class="nav-link" href="chat.html">チャット</a>
+      </nav>
     </div>
   </header>
 

@@ -1,7 +1,7 @@
 <!--
-Version: 2.10.0
+Version: 2.11.0
 Date: 2026-09-16
-Summary: ヘッダーと案内文を日本語にする
+Summary: 公式待機一覧のチャット入口を付ける
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -101,11 +101,18 @@ Summary: ヘッダーと案内文を日本語にする
       font-size: 0.76rem;
       letter-spacing: 0.06em;
     }
+    .site-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.15rem;
+    }
     .nav-link {
       color: var(--muted);
       font-size: 0.88rem;
       letter-spacing: 0.04em;
     }
+    .nav-link:hover,
+    .nav-link.is-current { color: var(--gold); }
     .main { padding: 1.8rem 0 5rem; }
     .article-shell {
       overflow: hidden;
@@ -308,6 +315,64 @@ Summary: ヘッダーと案内文を日本語にする
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
+    .chat-block {
+      margin-top: 2.4rem;
+    }
+    .chat-block h2 {
+      margin: 0 0 0.55rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .chat-lead {
+      margin: 0 0 0.95rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .chat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+    .chat-card {
+      display: grid;
+      gap: 0.25rem;
+      padding: 1.05rem 1.1rem 1.15rem;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .chat-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(212, 180, 131, 0.4);
+    }
+    .chat-kicker {
+      margin: 0;
+      color: var(--gold);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+    }
+    .chat-card h3 {
+      margin: 0;
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .chat-card p:last-child {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+    .chat-more {
+      display: inline-block;
+      margin-top: 0.95rem;
+      color: var(--gold);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+    }
     .site-footer {
       border-top: 1px solid var(--line);
       background: rgba(8, 10, 14, 0.55);
@@ -330,7 +395,8 @@ Summary: ヘッダーと案内文を日本語にする
     @media (max-width: 640px) {
       .article-body { padding: 1.25rem 1rem 1.6rem; }
       .cta { font-size: 0.98rem; min-height: 54px; }
-      .related-grid { grid-template-columns: 1fr; }
+      .related-grid,
+      .chat-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -344,7 +410,10 @@ Summary: ヘッダーと案内文を日本語にする
           <span>今夜の一本</span>
         </div>
       </a>
-      <a class="nav-link" href="index.html">紹介</a>
+      <nav class="site-nav">
+        <a class="nav-link" href="index.html">紹介</a>
+        <a class="nav-link" href="chat.html">チャット</a>
+      </nav>
     </div>
   </header>
 
@@ -384,6 +453,16 @@ Summary: ヘッダーと案内文を日本語にする
   </div>
 </section>
 </div>
+
+        <section class="chat-block">
+  <h2>今いるチャット</h2>
+  <p class="chat-lead">公式の待機一覧。顔を見てから入る。</p>
+  <div class="chat-grid">
+    <a class="chat-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Flivechat.dmm.co.jp%2Facha&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><p class="chat-kicker">FANZA</p><h3>アダルト</h3><p>待機中の一覧</p></a>
+<a class="chat-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Flivechat.dmm.co.jp%2Fmacha&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><p class="chat-kicker">FANZA</p><h3>人妻</h3><p>待機中の一覧</p></a>
+  </div>
+  <a class="chat-more" href="chat.html">チャットの入口へ</a>
+</section>
 
         <a class="back" href="index.html">← 一覧へ</a>
       </div>

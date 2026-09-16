@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.13.0
+# Version: 2.14.0
 # Date: 2026-09-16
-# Summary: サイト名と案内文を日本語にする
+# Summary: 公式待機一覧のチャット入口を付ける
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import requests
 
@@ -34,7 +35,13 @@ DOCS_DIR_NAME = "docs"
 COVERS_DIR_NAME = "covers"
 TEMPLATES_DIR_NAME = "templates"
 INDEX_ENTRIES_FILE = ".index_entries.json"
+CHAT_PAGE_FILENAME = "chat.html"
 SITE_NAME = "夜のリブレ"
+AFFILIATE_GATE = "https://al.fanza.co.jp/"
+LIVECHAT_FLOORS = (
+    ("アダルト", "https://livechat.dmm.co.jp/acha"),
+    ("人妻", "https://livechat.dmm.co.jp/macha"),
+)
 JACKET_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -245,6 +252,77 @@ def _render_related_section(title: str, items: tuple[FanzaItem, ...] | list[Fanz
     )
 
 
+def wrap_affiliate_url(destination: str, affiliate_id: str) -> str:
+    """公式URLを DMM アフィリゲートで包む。"""
+    dest = (destination or "").strip()
+    af_id = (affiliate_id or "").strip()
+    if not dest or not af_id:
+        return ""
+    return f"{AFFILIATE_GATE}?{urlencode({'lurl': dest, 'af_id': af_id, 'ch': 'api'})}"
+
+
+def _affiliate_id_from_url(url: str) -> str:
+    """既存アフィリURLから af_id を取り出す。"""
+    text = html.unescape((url or "").strip())
+    if not text:
+        return ""
+    values = parse_qs(urlparse(text).query).get("af_id") or []
+    return str(values[0]).strip() if values else ""
+
+
+def _resolve_affiliate_id(*candidates: str) -> str:
+    """af_id そのもの、またはアフィリURLから ID を決める。"""
+    for raw in candidates:
+        text = (raw or "").strip()
+        if not text:
+            continue
+        if "://" in text or "af_id=" in text:
+            found = _affiliate_id_from_url(text)
+            if found:
+                return found
+            continue
+        if re.fullmatch(r"[\w.\-]+-\d+", text):
+            return text
+    return ""
+
+
+def _render_chat_cards(affiliate_id: str) -> str:
+    """FANZAライブチャットの公式待機一覧カード。"""
+    af_id = (affiliate_id or "").strip()
+    if not af_id:
+        return ""
+    cards: list[str] = []
+    for label, dest in LIVECHAT_FLOORS:
+        href = html.escape(wrap_affiliate_url(dest, af_id), quote=True)
+        if not href:
+            continue
+        title = html.escape(label)
+        cards.append(
+            f'<a class="chat-card" href="{href}" rel="nofollow sponsored noopener" '
+            f'target="_blank"><p class="chat-kicker">FANZA</p><h3>{title}</h3>'
+            f"<p>待機中の一覧</p></a>"
+        )
+    return "\n".join(cards)
+
+
+def render_chat_block(affiliate_id: str, *, more_link: bool = True) -> str:
+    """記事下のチャット入口。IDが無ければ出さない。"""
+    cards = _render_chat_cards(affiliate_id)
+    if not cards:
+        return ""
+    more = ""
+    if more_link:
+        more = '<a class="chat-more" href="chat.html">チャットの入口へ</a>'
+    return (
+        '<section class="chat-block">\n'
+        "  <h2>今いるチャット</h2>\n"
+        '  <p class="chat-lead">公式の待機一覧。顔を見てから入る。</p>\n'
+        f'  <div class="chat-grid">\n    {cards}\n  </div>\n'
+        f"  {more}\n"
+        "</section>\n"
+    )
+
+
 def render_related_html(related: RelatedWorks | None) -> str:
     """記事下の関連作品HTML。空なら何も出さない。"""
     if related is None:
@@ -276,6 +354,32 @@ def _apply_template(template: str, mapping: dict[str, str]) -> str:
     for key, value in mapping.items():
         rendered = rendered.replace("{{" + key + "}}", value)
     return rendered
+
+
+def _write_chat_page(
+    docs_path: Path,
+    *,
+    pages_base_url: str,
+    affiliate_id: str,
+) -> None:
+    """チャット専用ページを書き出す。"""
+    cards = _render_chat_cards(affiliate_id)
+    if not cards:
+        cards = '<p class="empty">公式の待機一覧は準備中です。</p>'
+    template = _load_template(CHAT_PAGE_FILENAME)
+    page_html = _apply_template(
+        template,
+        {
+            "PAGE_TITLE": "今いるチャット",
+            "META_DESCRIPTION": "公式の待機一覧。顔を見てから入る。",
+            "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/chat.html"),
+            "CHAT_CARDS": cards,
+            "YEAR": str(datetime.now(timezone.utc).year),
+        },
+    )
+    dest = docs_path / CHAT_PAGE_FILENAME
+    dest.write_text(page_html, encoding="utf-8")
+    logger.info("chat.html を出力: %s", dest)
 
 
 def _load_index_entries(docs_path: Path) -> list[IndexEntry]:
@@ -351,12 +455,15 @@ def _render_article_page(
     pages_base_url: str,
     summary: str = "",
     related: RelatedWorks | None = None,
+    affiliate_id: str = "",
+    related_html: str | None = None,
 ) -> str:
     """個別記事 HTML をテンプレートから生成する。"""
     page_title = html.escape(item.title)
     meta_source = (summary or item.description.replace("\n", " ")).strip()
     description_meta = html.escape(meta_source[:160])
     affiliate = html.escape(item.affiliate_url, quote=True)
+    resolved_af_id = _resolve_affiliate_id(affiliate_id, item.affiliate_url)
     canonical = html.escape(build_cushion_page_url(pages_base_url, item.content_id))
     price_line = html.escape(_format_price_display(item))
     cover_rel = cover_relpath_for(item.content_id)
@@ -400,7 +507,8 @@ def _render_article_page(
             "DISCOUNT_BADGE": discount_badge,
             "PRICE_LINE": price_line,
             "ARTICLE_BODY": article_html_body,
-            "RELATED_BLOCK": render_related_html(related),
+            "RELATED_BLOCK": related_html if related_html is not None else render_related_html(related),
+            "CHAT_BLOCK": render_chat_block(resolved_af_id),
             "AFFILIATE_URL": affiliate,
             "YEAR": str(datetime.now(timezone.utc).year),
         },
@@ -494,6 +602,7 @@ def write_article_and_update_index(
     moods: list[str] | None = None,
     created_at: str | None = None,
     related: RelatedWorks | None = None,
+    related_html: str | None = None,
 ) -> Path:
     """
     個別記事 HTML を書き出し、index.html とメタデータを更新する。
@@ -516,12 +625,15 @@ def write_article_and_update_index(
     )
     mood_tags = moods or infer_moods(priced_item, summary=card_summary)
 
+    affiliate_id = _resolve_affiliate_id(priced_item.affiliate_url)
     page_html = _render_article_page(
         priced_item,
         article_html_body,
         pages_base_url=github_pages_base_url,
         summary=card_summary,
         related=related,
+        affiliate_id=affiliate_id,
+        related_html=related_html,
     )
     article_path.write_text(page_html, encoding="utf-8")
     logger.info("記事 HTML を出力: %s", article_path)
@@ -546,8 +658,27 @@ def write_article_and_update_index(
 
     index_html = _render_index_page(entries, pages_base_url=github_pages_base_url)
     (docs_path / "index.html").write_text(index_html, encoding="utf-8")
+    _write_chat_page(
+        docs_path,
+        pages_base_url=github_pages_base_url,
+        affiliate_id=affiliate_id,
+    )
     logger.info("index.html を更新しました（件数=%s moods=%s）", len(entries), mood_tags)
     return article_path
+
+
+def _existing_related_html(article_html: str) -> str:
+    """公開済み記事から関連作品ブロックを残す。"""
+    start = article_html.find('<div class="related">')
+    if start < 0:
+        return ""
+    end = len(article_html)
+    for marker in ('<section class="chat-block">', '<a class="back"'):
+        pos = article_html.find(marker, start)
+        if pos != -1:
+            end = min(end, pos)
+    chunk = article_html[start:end].rstrip()
+    return chunk + "\n" if chunk else ""
 
 
 def _article_body_fragment(article_html: str) -> str:
@@ -582,7 +713,8 @@ def _parse_credit_value(body: str, label: str) -> str:
 def _item_from_published_page(entry: IndexEntry, page_html: str) -> FanzaItem:
     """公開済みHTMLから型枠再生成用の FanzaItem を復元する。"""
     body = _article_body_fragment(page_html)
-    list_price, sale_price, discount = extract_prices_from_html(page_html)
+    price_source = page_html.split('<div class="content">', 1)[0]
+    list_price, sale_price, discount = extract_prices_from_html(price_source)
     genres = tuple(
         html.unescape(g) for g in re.findall(r"<li>(.*?)</li>", body) if g.strip()
     )
@@ -662,6 +794,10 @@ def refresh_published_cards(
         if item.image_url:
             save_jacket_cover(item.content_id, item.image_url)
         body = _article_body_fragment(page_html)
+        related_html = None
+        if not (related.series_items or related.actress_items or related.maker_items):
+            kept = _existing_related_html(page_html)
+            related_html = kept or None
         write_article_and_update_index(
             item,
             body,
@@ -670,6 +806,7 @@ def refresh_published_cards(
             moods=entry.moods or infer_moods(item, summary=entry.summary),
             created_at=entry.created_at,
             related=related,
+            related_html=related_html,
         )
         latest = [
             e for e in _load_index_entries(docs_path) if e.content_id == entry.content_id
@@ -680,5 +817,17 @@ def refresh_published_cards(
     _save_index_entries(docs_path, refreshed)
     index_html = _render_index_page(refreshed, pages_base_url=github_pages_base_url)
     (docs_path / "index.html").write_text(index_html, encoding="utf-8")
+    chat_affiliate_id = _resolve_affiliate_id(dmm_affiliate_id)
+    if not chat_affiliate_id and refreshed:
+        sample_path = docs_path / refreshed[0].article_filename
+        if sample_path.exists():
+            chat_affiliate_id = _resolve_affiliate_id(
+                _affiliate_url_from_html(sample_path.read_text(encoding="utf-8"))
+            )
+    _write_chat_page(
+        docs_path,
+        pages_base_url=github_pages_base_url,
+        affiliate_id=chat_affiliate_id,
+    )
     logger.info("index.html を再生成しました（件数=%s）", len(refreshed))
     return len(refreshed)
