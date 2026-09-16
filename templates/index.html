@@ -1,7 +1,7 @@
 <!--
-Version: 2.14.0
+Version: 2.15.0
 Date: 2026-09-16
-Summary: 紹介の下に公式のFANZA新着ウィジェットを置く
+Summary: 公式バナー3つを最下部に見出しなしで並べる
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -355,33 +355,6 @@ Summary: 紹介の下に公式のFANZA新着ウィジェットを置く
       border-radius: var(--radius);
       background: var(--panel);
     }
-    .chat-strip {
-      margin: 0 0 2.4rem;
-      padding: 1.35rem 1.25rem 1.45rem;
-      border: 1px solid rgba(212, 180, 131, 0.28);
-      border-radius: 24px;
-      background:
-        linear-gradient(135deg, rgba(212, 180, 131, 0.1), transparent 42%),
-        var(--panel);
-      box-shadow: var(--shadow);
-      animation: rise 0.75s ease 0.04s both;
-    }
-    .chat-strip .section-head {
-      margin-bottom: 0.55rem;
-      padding-bottom: 0.7rem;
-      animation: none;
-    }
-    .chat-lead {
-      margin: 0 0 1rem;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-    .chat-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.85rem;
-      justify-items: center;
-    }
     .chat-banner {
       width: 300px;
       max-width: 100%;
@@ -391,35 +364,21 @@ Summary: 紹介の下に公式のFANZA新着ウィジェットを置く
       border: 1px solid var(--line);
       background: #0b0d12;
     }
-    .chat-banner iframe {
+    .chat-banner iframe,
+    .chat-banner ins {
       display: block;
       width: 300px;
       height: 250px;
       border: 0;
     }
-    .widget-strip {
+    .banner-row {
       margin: 2.4rem 0 0;
-      padding: 1.25rem 1.15rem 1.45rem;
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      background: var(--panel);
     }
-    .widget-strip h2 {
-      margin: 0 0 0.45rem;
-      font-family: "Shippori Mincho", serif;
-      font-size: 1.2rem;
-      font-weight: 600;
-    }
-    .widget-lead {
-      margin: 0 0 1rem;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-    .widget-frame {
-      width: 300px;
-      max-width: 100%;
-      min-height: 250px;
-      margin: 0 auto;
+    .banner-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+      justify-items: center;
     }
     .site-footer {
       border-top: 1px solid var(--line);
@@ -441,10 +400,12 @@ Summary: 紹介の下に公式のFANZA新着ウィジェットを置く
       from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @media (max-width: 980px) {
+      .banner-grid { grid-template-columns: 1fr; }
+    }
     @media (max-width: 720px) {
       .hero { padding: 1.5rem 1.15rem; }
       .section-head { align-items: start; flex-direction: column; }
-      .chat-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -460,7 +421,7 @@ Summary: 紹介の下に公式のFANZA新着ウィジェットを置く
       </a>
       <nav class="site-nav">
         <a class="nav-link" href="#reviews">紹介</a>
-        <a class="nav-link nav-chat" href="chat.html">チャット</a>
+        <a class="nav-link nav-chat" href="chat.html">ライブチャット</a>
       </nav>
     </div>
   </header>
@@ -471,8 +432,6 @@ Summary: 紹介の下に公式のFANZA新着ウィジェットを置く
       <h1>What to watch tonight?</h1>
       <p>Sale and ranking. Short review, then FANZA.</p>
     </section>
-
-    {{CHAT_STRIP}}
 
     <section id="reviews">
       <div class="section-head">
@@ -495,7 +454,7 @@ Summary: 紹介の下に公式のFANZA新着ウィジェットを置く
       </div>
     </section>
 
-    {{NEW_ARRIVAL_WIDGET}}
+    {{BANNER_ROW}}
   </main>
 
   <footer class="site-footer">

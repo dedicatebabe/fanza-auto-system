@@ -1,28 +1,38 @@
 # ==========================================
-# Version: 1.2.0
-# Date: 2026-09-13
-# Summary: Pages URL 環境変数を BASE_URL に変更（Secrets 制約対応）
+# Version: 1.6.0
+# Date: 2026-09-17
+# Summary: 16時の懐かしい女優枠を残し、22時と24時も維持
 # ==========================================
 name: FANZA Auto Affiliate Cron
 
 on:
   schedule:
-    # JST 08:00 = UTC 23:00
+    # JST 08:00 = UTC 23:00 セール
     - cron: "0 23 * * *"
-    # JST 12:00 = UTC 03:00
+    # JST 12:00 = UTC 03:00 売上順
     - cron: "0 3 * * *"
-    # JST 20:00 = UTC 11:00
+    # JST 16:00 = UTC 07:00 懐かしい女優（追加枠）
+    - cron: "0 7 * * *"
+    # JST 19:00 = UTC 10:00 女優イベント（1週間前・前日・直前）
+    - cron: "0 10 * * *"
+    # JST 20:00 = UTC 11:00 セール
     - cron: "0 11 * * *"
+    # JST 22:00 = UTC 13:00 懐かしい女優（追加枠）
+    - cron: "0 13 * * *"
+    # JST 24:00 = UTC 15:00 売上順
+    - cron: "0 15 * * *"
   workflow_dispatch:
     inputs:
       mode:
-        description: "実行モード (sale / rank)"
+        description: "実行モード (sale / rank / nostalgic / live-event)"
         required: false
         default: sale
         type: choice
         options:
           - sale
           - rank
+          - nostalgic
+          - live-event
 
 permissions:
   contents: write
@@ -55,7 +65,11 @@ jobs:
           case "$HOUR" in
             23) echo "value=sale" >> "$GITHUB_OUTPUT" ;;
             03) echo "value=rank" >> "$GITHUB_OUTPUT" ;;
+            07) echo "value=nostalgic" >> "$GITHUB_OUTPUT" ;;
+            10) echo "value=live-event" >> "$GITHUB_OUTPUT" ;;
             11) echo "value=sale" >> "$GITHUB_OUTPUT" ;;
+            13) echo "value=nostalgic" >> "$GITHUB_OUTPUT" ;;
+            15) echo "value=rank" >> "$GITHUB_OUTPUT" ;;
             *) echo "value=sale" >> "$GITHUB_OUTPUT" ;;
           esac
 
@@ -69,7 +83,13 @@ jobs:
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
           BASE_URL: ${{ secrets.BASE_URL }}
-        run: python main.py --mode "${{ steps.mode.outputs.value }}"
+        run: |
+          MODE="${{ steps.mode.outputs.value }}"
+          if [ "$MODE" = "live-event" ]; then
+            python main.py --live-event
+          else
+            python main.py --mode "$MODE"
+          fi
 
       - name: Commit and push docs and posted.json
         run: |

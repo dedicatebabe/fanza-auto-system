@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.5.0
-# Date: 2026-09-16
-# Summary: 同じシリーズ・同じ女優を売上順で関連取得する
+# Version: 1.7.0
+# Date: 2026-09-17
+# Summary: ギルガメ・でらべっぴん世代の女優名を増やす
 # ==========================================
 """DMM アフィリエイト API v3 連携モジュール。"""
 
@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Literal
 from urllib.parse import urlencode
 
@@ -26,8 +27,104 @@ MAX_FETCH_PAGES = 10
 MIN_SALE_DISCOUNT_PERCENT = 30.0
 RELATED_FETCH_HITS = 20
 RELATED_LIMIT = 4
+NOSTALGIC_KEYWORD_HITS = 20
 
-FetchMode = Literal["sale", "rank"]
+FetchMode = Literal["sale", "rank", "nostalgic"]
+
+# ギルガメッシュないと／でらべっぴん世代が覚える顔。熟女ジャンルではない。
+NOSTALGIC_ACTRESSES = (
+    "飯島愛",
+    "川島和津実",
+    "かとうれいこ",
+    "細川ふみえ",
+    "吉野公佳",
+    "杉本彩",
+    "黒木香",
+    "松坂季実子",
+    "樹まり子",
+    "朝岡実嶺",
+    "白石ひとみ",
+    "小室友里",
+    "あいだもも",
+    "卑弥呼",
+    "五島めぐ",
+    "菊池エリ",
+    "中原絵美",
+    "斉藤唯",
+    "村上麗奈",
+    "小林ひとみ",
+    "滝川真子",
+    "憂木瞳",
+    "浅倉舞",
+    "橘ますみ",
+    "桜樹ルイ",
+    "寺崎泉",
+    "田中露央沙",
+    "藤谷しおり",
+    "水沢早紀",
+    "宏岡みらい",
+    "吉川りりあ",
+    "栗田ひろこ",
+    "早乙女美紀",
+    "田村香織",
+    "御藤静",
+    "木田彩水",
+    "庄司みゆき",
+    "河合美果",
+    "木下優",
+    "小沢奈美",
+    "いとうしいな",
+    "観月マリ",
+    "水野さやか",
+    "篠原真女",
+    "星野ひかる",
+    "工藤ひとみ",
+    "水島みなみ",
+    "瞳リョウ",
+    "金沢文子",
+    "三浦あいか",
+    "及川奈央",
+    "長谷川瞳",
+    "夢野まりあ",
+    "灘ジュン",
+    "美竹涼子",
+    "小沢まどか",
+    "高樹マリア",
+    "小沢菜穂",
+    "天海麗",
+    "桜朱音",
+    "原田真緒",
+    "蒼井そら",
+    "穂花",
+    "みひろ",
+    "夏目ナナ",
+    "吉沢明歩",
+    "麻美ゆま",
+    "小川あさ美",
+    "小澤マリア",
+    "あいだゆあ",
+    "明日花キララ",
+    "初音みのり",
+    "希崎ジェシカ",
+    "希美まゆ",
+    "小向美奈子",
+    "西條るり",
+    "かすみ果穂",
+    "西野翔",
+    "上原カエラ",
+    "麻生希",
+    "安部ちなつ",
+    "宝生瑠璃",
+    "三浦綺音",
+    "青木美津子",
+    "松田千奈",
+    "水野はるき",
+    "加山なつこ",
+    "八神康子",
+    "北原梨奈",
+    "清岡純子",
+    "岸ゆり",
+)
 
 
 @dataclass(frozen=True)
@@ -328,11 +425,61 @@ def _fetch_item_list_page(
 
 def _item_matches_mode(item: FanzaItem, mode: FetchMode) -> bool:
     """取得モードに応じて作品をフィルタする。"""
-    if mode == "rank":
+    if mode in ("rank", "nostalgic"):
         return True
     if item.discount_percent is None:
         return False
     return item.discount_percent >= MIN_SALE_DISCOUNT_PERCENT
+
+
+def _item_has_actress(item: FanzaItem, name: str) -> bool:
+    """出演またはタイトルにその女優名があるか。"""
+    needle = (name or "").replace(" ", "").replace("　", "")
+    if not needle:
+        return False
+    for actress in item.actresses:
+        if needle == actress.replace(" ", "").replace("　", ""):
+            return True
+    title = (item.title or "").replace(" ", "").replace("　", "")
+    return needle in title
+
+
+def fetch_nostalgic_item_for_posting(
+    api_id: str,
+    affiliate_id: str,
+    *,
+    skip_content_ids: set[str],
+) -> FanzaItem:
+    """懐かしい女優の未投稿作品を1件取る。既存の sale/rank とは別枠。"""
+    if not api_id or not affiliate_id:
+        raise ValueError("DMM_API_ID と DMM_AFFILIATE_ID が必要です。")
+    start = datetime.now(timezone.utc).timetuple().tm_yday % len(NOSTALGIC_ACTRESSES)
+    for step in range(len(NOSTALGIC_ACTRESSES)):
+        name = NOSTALGIC_ACTRESSES[(start + step) % len(NOSTALGIC_ACTRESSES)]
+        raw_items = _fetch_item_list(
+            api_id,
+            affiliate_id,
+            sort="rank",
+            offset=1,
+            hits=NOSTALGIC_KEYWORD_HITS,
+            extra={"keyword": name},
+        )
+        for raw in raw_items:
+            item = _normalize_item(raw)
+            if item is None:
+                continue
+            if item.content_id in skip_content_ids:
+                continue
+            if not _item_has_actress(item, name):
+                continue
+            logger.info(
+                "懐かしい女優を採用: name=%s content_id=%s title=%s",
+                name,
+                item.content_id,
+                item.title[:40],
+            )
+            return item
+    raise RuntimeError("懐かしい女優の未投稿作品が見つかりませんでした。")
 
 
 def fetch_fanza_item_for_posting(
@@ -348,6 +495,12 @@ def fetch_fanza_item_for_posting(
     skip_content_ids に含まれる content_id はスキップし、
     最大 MAX_FETCH_PAGES ページまで再取得を試みる。
     """
+    if mode == "nostalgic":
+        return fetch_nostalgic_item_for_posting(
+            api_id,
+            affiliate_id,
+            skip_content_ids=skip_content_ids,
+        )
     if not api_id or not affiliate_id:
         raise ValueError("DMM_API_ID と DMM_AFFILIATE_ID が必要です。")
 

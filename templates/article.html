@@ -1,7 +1,7 @@
 <!--
-Version: 2.14.0
+Version: 2.16.0
 Date: 2026-09-16
-Summary: 関連作品の下に公式のFANZA新着ウィジェットを置く
+Summary: 記事のteaserとジャンル表記を外す
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -174,15 +174,6 @@ Summary: 関連作品の下に公式のFANZA新着ウィジェットを置く
       margin: 0 0 1.5rem;
       color: var(--muted);
       font-size: 0.92rem;
-    }
-    .teaser {
-      margin: 0 0 1rem;
-      padding: 1rem 1.1rem;
-      border-left: 3px solid var(--gold);
-      border-radius: 0 14px 14px 0;
-      background: rgba(212, 180, 131, 0.08);
-      color: var(--muted);
-      font-size: 0.94rem;
     }
     .cta-early {
       display: flex;
@@ -437,7 +428,7 @@ Summary: 関連作品の下に公式のFANZA新着ウィジェットを置く
       </a>
       <nav class="site-nav">
         <a class="nav-link" href="index.html">紹介</a>
-        <a class="nav-link nav-chat" href="chat.html">チャット</a>
+        <a class="nav-link nav-chat" href="chat.html">ライブチャット</a>
       </nav>
     </div>
   </header>
@@ -449,7 +440,6 @@ Summary: 関連作品の下に公式のFANZA新着ウィジェットを置く
         {{DISCOUNT_BADGE}}
         <h1>{{PAGE_TITLE}}</h1>
         <p class="meta">{{PRICE_LINE}}</p>
-        <p class="teaser">公式はここ。見たければ読めばいい。</p>
         <a class="cta-early" href="{{AFFILIATE_URL}}" rel="nofollow sponsored noopener" target="_blank">公式ページへ</a>
         <div class="content">
           {{ARTICLE_BODY}}

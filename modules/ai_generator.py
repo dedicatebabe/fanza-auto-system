@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.18.0
+# Version: 2.19.0
 # Date: 2026-09-16
-# Summary: ReviewはX投稿文、Pointはジャンル、Lastは出さない
+# Summary: 記事本文からジャンル欄を外す
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -435,14 +435,11 @@ def _review_html(item: FanzaItem, review_text: str) -> str:
 
 
 def _template_article_html(item: FanzaItem, *, review_text: str = "") -> str:
-    """ReviewはX投稿文、ジャンルは公式タグ。Lastは出さない。"""
+    """ReviewはX投稿文。ジャンル欄とLastは出さない。"""
     review = _review_html(item, review_text)
-    lis = "\n  ".join(f"<li>{html.escape(p)}</li>" for p in _point_items(item))
     return (
         f"<h2>Review</h2>\n"
         f"{review}"
-        f"<h2>ジャンル</h2>\n"
-        f"<ul>\n  {lis}\n</ul>\n"
     )
 
 
@@ -573,6 +570,12 @@ def _normalize_article_headings(raw_html: str) -> str:
         html_body,
         flags=re.IGNORECASE | re.DOTALL,
     )
+    html_body = re.sub(
+        r"<h2>ジャンル</h2>\s*<ul>.*?</ul>\s*",
+        "",
+        html_body,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     return html_body
 
 
@@ -610,7 +613,7 @@ def extract_card_summary(
     text = (review_text or "").strip()
     if not text:
         match = re.search(
-            r"<h2>Review</h2>\s*(.*?)\s*<h2>",
+            r"<h2>Review</h2>\s*(.*?)(?:\s*<h2>|\Z)",
             article_html_body or "",
             flags=re.DOTALL | re.IGNORECASE,
         )
@@ -630,7 +633,7 @@ def generate_article_html(
     """
     GitHub Pages 用の HTML 本文（fragment）を生成する。
 
-    Review は X 投稿と同じ文章。ジャンルは公式タグ。
+    Review は X 投稿と同じ文章。ジャンル欄は出さない。
     """
     _ = client
     logger.info("記事HTMLを型枠で生成 content_id=%s", item.content_id)

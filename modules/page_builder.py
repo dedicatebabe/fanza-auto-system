@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.17.0
+# Version: 2.19.0
 # Date: 2026-09-16
-# Summary: 公式のFANZA動画新着ウィジェットを配置する
+# Summary: 公開記事からジャンル欄を外す
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -308,19 +308,26 @@ def _render_chat_cards(affiliate_id: str) -> str:
     )
 
 
-def render_new_arrival_widget() -> str:
-    """公式のFANZA動画新着ウィジェット。"""
+def _render_new_arrival_frame() -> str:
+    """公式新着ウィジェットのバナー枠だけ。"""
     wid = html.escape(NEW_ARRIVAL_WIDGET_ID, quote=True)
+    return (
+        '<div class="chat-banner">'
+        f'<ins class="dmm-widget-placement" data-id="{wid}" '
+        'style="background:transparent"></ins>'
+        f'<script src="https://widget-view.dmm.co.jp/js/placement.js" '
+        f'class="dmm-widget-scripts" data-id="{wid}"></script>'
+        "</div>"
+    )
+
+
+def render_new_arrival_widget() -> str:
+    """記事用の公式FANZA動画新着ウィジェット。"""
     return (
         '<section class="widget-strip">\n'
         "  <h2>FANZAの新着</h2>\n"
         '  <p class="widget-lead">公式バナー。紹介してない作品も出る。</p>\n'
-        '  <div class="widget-frame">\n'
-        f'    <ins class="dmm-widget-placement" data-id="{wid}" '
-        'style="background:transparent"></ins>\n'
-        f'    <script src="https://widget-view.dmm.co.jp/js/placement.js" '
-        f'class="dmm-widget-scripts" data-id="{wid}"></script>\n'
-        "  </div>\n"
+        f'  {_render_new_arrival_frame()}\n'
         "</section>\n"
     )
 
@@ -341,17 +348,13 @@ def render_chat_block(affiliate_id: str, *, more_link: bool = True) -> str:
     )
 
 
-def render_index_chat_strip(affiliate_id: str) -> str:
-    """トップ用のチャット入口。"""
+def render_index_banner_row(affiliate_id: str) -> str:
+    """トップ最下部の公式バナー3つ。見出しは出さない。"""
     cards = _render_chat_cards(affiliate_id)
+    widget = _render_new_arrival_frame()
     return (
-        '<section class="chat-strip" id="chat">\n'
-        '  <div class="section-head">\n'
-        "    <h2>今いるチャット</h2>\n"
-        '    <a class="section-more" href="chat.html">入口へ</a>\n'
-        "  </div>\n"
-        '  <p class="chat-lead">公式バナー。今チャット中の顔が出る。</p>\n'
-        f'  <div class="chat-grid">\n    {cards}\n  </div>\n'
+        '<section class="banner-row" id="live">\n'
+        f'  <div class="banner-grid">\n    {cards}\n    {widget}\n  </div>\n'
         "</section>\n"
     )
 
@@ -625,8 +628,7 @@ def _render_index_page(
             "PAGE_TITLE": SITE_NAME,
             "META_DESCRIPTION": "今夜見る一本を短く紹介。あとは公式で。",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/"),
-            "CHAT_STRIP": render_index_chat_strip(affiliate_id),
-            "NEW_ARRIVAL_WIDGET": render_new_arrival_widget(),
+            "BANNER_ROW": render_index_banner_row(affiliate_id),
             "MOOD_FILTERS": _render_mood_filters(sorted_entries),
             "CARD_GRID": cards,
             "YEAR": str(datetime.now(timezone.utc).year),
@@ -733,9 +735,14 @@ def _article_body_fragment(article_html: str) -> str:
         article_html,
         flags=re.DOTALL,
     )
-    if match:
-        return match.group(1).strip()
-    return article_html
+    body = match.group(1).strip() if match else article_html
+    body = re.sub(
+        r"<h2>ジャンル</h2>\s*<ul>.*?</ul>\s*",
+        "",
+        body,
+        flags=re.DOTALL,
+    )
+    return body.strip()
 
 
 def _affiliate_url_from_html(article_html: str) -> str:

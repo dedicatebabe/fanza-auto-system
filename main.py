@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.10.0
-# Date: 2026-09-16
-# Summary: 記事下に同じシリーズ・同じ女優の関連作品を付ける
+# Version: 2.12.0
+# Date: 2026-09-17
+# Summary: 女優イベントを3回告知し、懐かしい女優を毎日追加する
 # ==========================================
 """
 FANZA（DMM API v3）のセール・人気作品を取得し、
@@ -28,6 +28,12 @@ from modules.ai_generator import (
     x_post_body_for_article,
 )
 from modules.dmm_api import FetchMode, fetch_fanza_item_for_posting, fetch_related_works
+from modules.live_events import (
+    build_live_event_tweet,
+    due_live_posts,
+    event_content_id,
+    fetch_actress_events,
+)
 from modules.moods import infer_moods
 from modules.page_builder import (
     build_cushion_page_url,
@@ -111,9 +117,14 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="FANZA 自動アフィリエイト実行")
     parser.add_argument(
         "--mode",
-        choices=("sale", "rank"),
+        choices=("sale", "rank", "nostalgic"),
         default="sale",
-        help="sale=高割引セール優先, rank=売上順（人気）優先",
+        help="sale=高割引セール優先, rank=売上順, nostalgic=懐かしい女優を追加",
+    )
+    parser.add_argument(
+        "--live-event",
+        action="store_true",
+        help="女優イベントを1件、X に投稿する（動画紹介とは別枠）",
     )
     parser.add_argument(
         "--dry-run",
@@ -131,6 +142,66 @@ def parse_args() -> argparse.Namespace:
         help="既存記事のカード要約と気分タグだけ再生成する",
     )
     return parser.parse_args()
+
+
+def run_live_event_post(args: argparse.Namespace) -> int:
+    """女優イベントを、1週間前・前日・直前の分だけ X に出す。"""
+    pages_base = require_env("BASE_URL")
+    chat_url = pages_base.rstrip("/") + "/chat.html"
+    posted_path = project_root() / POSTED_JSON
+    history = load_posted_history(posted_path)
+    skip_ids = content_ids_posted_within_days(history, POSTED_RETENTION_DAYS)
+    events = fetch_actress_events()
+    due = due_live_posts(events, skip_ids=skip_ids)
+    if not due:
+        logger.info("今出す女優イベント告知はありません。")
+        return 0
+    x_api_key = ""
+    x_api_secret = ""
+    x_access_token = ""
+    x_access_secret = ""
+    if not args.dry_run:
+        x_api_key = require_env("X_API_KEY")
+        x_api_secret = require_env("X_API_SECRET")
+        x_access_token = require_env("X_ACCESS_TOKEN")
+        x_access_secret = require_env("X_ACCESS_SECRET")
+    posted = 0
+    for index, (event, slot) in enumerate(due):
+        tweet_text = build_live_event_tweet(
+            event,
+            slot=slot,
+            chat_page_url=chat_url,
+        )
+        logger.info("女優イベント投稿文 slot=%s:\n%s", slot, tweet_text)
+        if args.dry_run:
+            posted += 1
+            continue
+        post_to_x(
+            tweet_text,
+            api_key=x_api_key,
+            api_secret=x_api_secret,
+            access_token=x_access_token,
+            access_secret=x_access_secret,
+            skip_sleep=args.skip_x_sleep or index > 0,
+            image_url=event.image_url,
+        )
+        cid = event_content_id(event, slot)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        history = [h for h in history if str(h.get("content_id")) != cid]
+        history.append(
+            {
+                "content_id": cid,
+                "posted_at": now_iso,
+                "mode": f"live-event-{slot}",
+                "cushion_url": chat_url,
+            }
+        )
+        save_posted_history(posted_path, history)
+        skip_ids.add(cid)
+        posted += 1
+        logger.info("posted.json を更新しました content_id=%s", cid)
+    logger.info("女優イベント告知 %s 件", posted)
+    return 0
 
 
 def main() -> int:
@@ -153,6 +224,9 @@ def main() -> int:
             )
             logger.info("カード再生成が完了しました（%s件）", count)
             return 0
+
+        if args.live_event:
+            return run_live_event_post(args)
 
         dmm_api_id = require_env("DMM_API_ID")
         dmm_affiliate_id = require_env("DMM_AFFILIATE_ID")
