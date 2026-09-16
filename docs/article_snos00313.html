@@ -1,7 +1,7 @@
 <!--
-Version: 2.8.0
+Version: 2.9.0
 Date: 2026-09-16
-Summary: twitter:card を付けてジャケットをリンクプレビューに使う
+Summary: 記事下に同じシリーズ・同じ女優の関連作品を出す
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -249,6 +249,66 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
       font-size: 0.9rem;
       letter-spacing: 0.04em;
     }
+    .related {
+      margin-top: 2.4rem;
+      display: grid;
+      gap: 1.6rem;
+    }
+    .related-block h2 {
+      margin: 0 0 0.85rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+    .related-card {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .related-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(212, 180, 131, 0.4);
+    }
+    .related-card .thumb {
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      background: #0b0d12;
+    }
+    .related-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .related-card .body {
+      padding: 0.75rem 0.85rem 0.9rem;
+    }
+    .related-card .price {
+      margin: 0 0 0.35rem;
+      color: var(--gold);
+      font-size: 0.78rem;
+    }
+    .related-card h3 {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
     .site-footer {
       border-top: 1px solid var(--line);
       background: rgba(8, 10, 14, 0.55);
@@ -271,6 +331,7 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
     @media (max-width: 640px) {
       .article-body { padding: 1.25rem 1rem 1.6rem; }
       .cta { font-size: 0.98rem; min-height: 54px; }
+      .related-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -307,12 +368,23 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
   <li>美乳</li>
   <li>アクメ・オーガズム</li>
 </ul>
-
         </div>
         <div class="cta-panel">
           <p>Price and sample are on FANZA.</p>
           <a class="cta" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dsnos00313&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank">Buy on FANZA →</a>
         </div>
+        <div class="related">
+<section class="related-block">
+  <h2>瀬戸環奈の作品</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dsnos00334&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/snos00334/snos00334pl.jpg" alt="最強ビジュOLさん、出張先で死ぬほど嫌いな中年上司と相部屋… でも過激セクハラにまさかの快楽堕ちしちゃう！ 瀬戸環奈" loading="lazy"></div><div class="body"><p class="price">2,180円</p><h3>最強ビジュOLさん、出張先で死ぬほど嫌いな中年上司と相部屋… でも過激セクハラにまさかの快楽堕ちしちゃう！ 瀬戸環奈</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dsivr00444&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/sivr00444/sivr00444pl.jpg" alt="【VR】VR NO.1 STYLE 最強ヒロイン 瀬戸環奈 解禁 せとかんとSEXできるVR 瀬戸環奈" loading="lazy"></div><div class="body"><p class="price">500円</p><h3>【VR】VR NO.1 STYLE 最強ヒロイン 瀬戸環奈 解禁 せとかんとSEXできるVR 瀬戸環奈</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dsivr00490&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/sivr00490/sivr00490pl.jpg" alt="【VR】手繋いで、見つめあって、告白されて…一晩中イチャイチャ初めてのお泊まりデート 瀬戸環奈の恋人になれるVR" loading="lazy"></div><div class="body"><p class="price">1,480円</p><h3>【VR】手繋いで、見つめあって、告白されて…一晩中イチャイチャ初めてのお泊まりデート 瀬戸環奈の恋人になれるVR</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dsivr00381&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/sivr00381/sivr00381pl.jpg" alt="【VR】アナタもエスワン女優とSEXできる世界 ビジュ最強！AVスター×8KVRベスト 安達夕莉 渚あいり 村上悠華 明日葉みつは 榊原萌 初美なのか 夏生なつ 桜みお 紫堂るい 七ツ森りり 三田真鈴 浅野こころ みなみ羽琉 木村愛心 倉木華" loading="lazy"></div><div class="body"><p class="price">1,180円</p><h3>【VR】アナタもエスワン女優とSEXできる世界 ビジュ最強！AVスター×8KVRベスト 安達夕莉 渚あいり 村上悠華 明日葉みつは 榊原萌 初美なのか 夏生なつ 桜みお 紫堂るい 七ツ森りり 三田真鈴 浅野こころ みなみ羽琉 木村愛心 倉木華</h3></div></a>
+  </div>
+</section>
+</div>
+
         <a class="back" href="index.html">← Back</a>
       </div>
     </article>

@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.9.0
+# Version: 2.10.0
 # Date: 2026-09-16
-# Summary: 記事ReviewにX投稿文を入れ、TYPEは公式ジャンルにする
+# Summary: 記事下に同じシリーズ・同じ女優の関連作品を付ける
 # ==========================================
 """
 FANZA（DMM API v3）のセール・人気作品を取得し、
@@ -27,7 +27,7 @@ from modules.ai_generator import (
     generate_x_post_text,
     x_post_body_for_article,
 )
-from modules.dmm_api import FetchMode, fetch_fanza_item_for_posting
+from modules.dmm_api import FetchMode, fetch_fanza_item_for_posting, fetch_related_works
 from modules.moods import infer_moods
 from modules.page_builder import (
     build_cushion_page_url,
@@ -144,11 +144,12 @@ def main() -> int:
     try:
         if args.refresh_index:
             pages_base = require_env("BASE_URL")
-            gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
-            gemini_client = create_gemini_client(gemini_key) if gemini_key else None
+            dmm_api_id = os.getenv("DMM_API_ID", "").strip()
+            dmm_affiliate_id = os.getenv("DMM_AFFILIATE_ID", "").strip()
             count = refresh_published_cards(
                 github_pages_base_url=pages_base,
-                gemini_client=gemini_client,
+                dmm_api_id=dmm_api_id,
+                dmm_affiliate_id=dmm_affiliate_id,
             )
             logger.info("カード再生成が完了しました（%s件）", count)
             return 0
@@ -199,6 +200,12 @@ def main() -> int:
         )
         moods = infer_moods(item, summary=card_summary)
         logger.info("TYPEタグ: %s", moods)
+        related = fetch_related_works(dmm_api_id, dmm_affiliate_id, item)
+        logger.info(
+            "関連作品 series=%s actress=%s",
+            len(related.series_items),
+            len(related.actress_items),
+        )
 
         write_article_and_update_index(
             item,
@@ -206,6 +213,7 @@ def main() -> int:
             github_pages_base_url=pages_base,
             summary=card_summary,
             moods=moods,
+            related=related,
         )
 
         if args.dry_run:

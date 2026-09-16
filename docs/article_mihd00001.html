@@ -1,7 +1,7 @@
 <!--
-Version: 2.8.0
+Version: 2.9.0
 Date: 2026-09-16
-Summary: twitter:card を付けてジャケットをリンクプレビューに使う
+Summary: 記事下に同じシリーズ・同じ女優の関連作品を出す
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -249,6 +249,66 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
       font-size: 0.9rem;
       letter-spacing: 0.04em;
     }
+    .related {
+      margin-top: 2.4rem;
+      display: grid;
+      gap: 1.6rem;
+    }
+    .related-block h2 {
+      margin: 0 0 0.85rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+    .related-card {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .related-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(212, 180, 131, 0.4);
+    }
+    .related-card .thumb {
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      background: #0b0d12;
+    }
+    .related-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .related-card .body {
+      padding: 0.75rem 0.85rem 0.9rem;
+    }
+    .related-card .price {
+      margin: 0 0 0.35rem;
+      color: var(--gold);
+      font-size: 0.78rem;
+    }
+    .related-card h3 {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
     .site-footer {
       border-top: 1px solid var(--line);
       background: rgba(8, 10, 14, 0.55);
@@ -271,6 +331,7 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
     @media (max-width: 640px) {
       .article-body { padding: 1.25rem 1rem 1.6rem; }
       .cta { font-size: 0.98rem; min-height: 54px; }
+      .related-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -292,9 +353,9 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
     <article class="article-shell">
       <div class="hero-media"><img src="covers/mihd00001.jpg" alt="ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 葵いぶき" loading="lazy"></div>
       <div class="article-body">
-        <span class="badge">30% OFF</span>
+        
         <h1>ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 葵いぶき</h1>
-        <p class="meta">定価 980円 → 今 686円</p>
+        <p class="meta">980円</p>
         <p class="teaser">Official site is here. Read if you want.</p>
         <a class="cta-early" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmihd00001&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank">Official site →</a>
         <div class="content">
@@ -309,12 +370,32 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
   <li>ホテル</li>
   <li>ハメ撮り</li>
 </ul>
-
         </div>
         <div class="cta-panel">
           <p>Price and sample are on FANZA.</p>
           <a class="cta" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmihd00001&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank">Buy on FANZA →</a>
         </div>
+        <div class="related">
+<section class="related-block">
+  <h2>同じシリーズ：ムーハメ</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmihd00002&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mihd00002/mihd00002pl.jpg" alt="ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 宮下玲奈" loading="lazy"></div><div class="body"><p class="price">980円</p><h3>ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 宮下玲奈</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmihd00007&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mihd00007/mihd00007pl.jpg" alt="ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 八木奈々" loading="lazy"></div><div class="body"><p class="price">980円</p><h3>ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 八木奈々</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmihd00004&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mihd00004/mihd00004pl.jpg" alt="ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 石原希望" loading="lazy"></div><div class="body"><p class="price">980円</p><h3>ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 石原希望</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmihd00014&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mihd00014/mihd00014pl.jpg" alt="ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 百田光稀" loading="lazy"></div><div class="body"><p class="price">980円</p><h3>ハメドリ 配信限定 MOODYZ専属のナチュラルSEXを解禁 百田光稀</h3></div></a>
+  </div>
+</section>
+<section class="related-block">
+  <h2>葵いぶきの作品</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmdvr00422&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mdvr00422/mdvr00422pl.jpg" alt="【VR】【最狂キメセクVR】飲みだけの女友達を媚薬で強●発情！美スタイルが汁まみれのブッ飛び野獣中出しSEX！ 葵いぶき" loading="lazy"></div><div class="body"><p class="price">1,036円 / 30%OFF</p><h3>【VR】【最狂キメセクVR】飲みだけの女友達を媚薬で強●発情！美スタイルが汁まみれのブッ飛び野獣中出しSEX！ 葵いぶき</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00107&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00107/mida00107pl.jpg" alt="借金漬けになった愛する夫の身代わりで乳首奴●にされた私。 変態高利貸しの連日チクハラ調教で自ら中出しを求めるまで…。 葵いぶき" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>借金漬けになった愛する夫の身代わりで乳首奴●にされた私。 変態高利貸しの連日チクハラ調教で自ら中出しを求めるまで…。 葵いぶき</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00471&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00471/mida00471pl.jpg" alt="「ウチと一発キメようや～」彼氏と喧嘩中のバイトの先輩に誘われクラブでキメセク中出しガンギマBitch23発 葵いぶき" loading="lazy"></div><div class="body"><p class="price">350円 / 30%OFF</p><h3>「ウチと一発キメようや～」彼氏と喧嘩中のバイトの先輩に誘われクラブでキメセク中出しガンギマBitch23発 葵いぶき</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00426&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00426/mida00426pl.jpg" alt="応募総数167社の中から選ばれたラッキーな会社に葵いぶきが1日女上司になって中出しSEXをしに会社訪問！キミの会社で中出しファン感謝祭！" loading="lazy"></div><div class="body"><p class="price">350円 / 30%OFF</p><h3>応募総数167社の中から選ばれたラッキーな会社に葵いぶきが1日女上司になって中出しSEXをしに会社訪問！キミの会社で中出しファン感謝祭！</h3></div></a>
+  </div>
+</section>
+</div>
+
         <a class="back" href="index.html">← Back</a>
       </div>
     </article>

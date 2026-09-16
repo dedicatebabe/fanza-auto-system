@@ -1,7 +1,7 @@
 <!--
-Version: 2.8.0
+Version: 2.9.0
 Date: 2026-09-16
-Summary: twitter:card を付けてジャケットをリンクプレビューに使う
+Summary: 記事下に同じシリーズ・同じ女優の関連作品を出す
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -249,6 +249,66 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
       font-size: 0.9rem;
       letter-spacing: 0.04em;
     }
+    .related {
+      margin-top: 2.4rem;
+      display: grid;
+      gap: 1.6rem;
+    }
+    .related-block h2 {
+      margin: 0 0 0.85rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+    .related-card {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .related-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(212, 180, 131, 0.4);
+    }
+    .related-card .thumb {
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      background: #0b0d12;
+    }
+    .related-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .related-card .body {
+      padding: 0.75rem 0.85rem 0.9rem;
+    }
+    .related-card .price {
+      margin: 0 0 0.35rem;
+      color: var(--gold);
+      font-size: 0.78rem;
+    }
+    .related-card h3 {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
     .site-footer {
       border-top: 1px solid var(--line);
       background: rgba(8, 10, 14, 0.55);
@@ -271,6 +331,7 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
     @media (max-width: 640px) {
       .article-body { padding: 1.25rem 1rem 1.6rem; }
       .cta { font-size: 0.98rem; min-height: 54px; }
+      .related-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -308,12 +369,32 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
   <li>乱交</li>
   <li>フェラ</li>
 </ul>
-
         </div>
         <div class="cta-panel">
           <p>Price and sample are on FANZA.</p>
           <a class="cta" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmird00281&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank">Buy on FANZA →</a>
         </div>
+        <div class="related">
+<section class="related-block">
+  <h2>同じシリーズ：バコバコバスツアー</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmird00255&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mird00255/mird00255pl.jpg" alt="MOODYZファン感謝祭バコバコバスツアー2025 完全版 バコバス11時間＋うらバコ4時間＋未公開シーン収録17時間" loading="lazy"></div><div class="body"><p class="price">500円</p><h3>MOODYZファン感謝祭バコバコバスツアー2025 完全版 バコバス11時間＋うらバコ4時間＋未公開シーン収録17時間</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmird00141&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mird00141/mird00141pl.jpg" alt="MOODYZファン感謝祭バコバコバスツアー2014 南国バコバコランド大乱交！！" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>MOODYZファン感謝祭バコバコバスツアー2014 南国バコバコランド大乱交！！</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmird00254&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mird00254/mird00254pl.jpg" alt="MOODYZファン感謝祭 うらバコバコバスツアー2025 補欠者救済？サンバDEカーニバル！！！" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>MOODYZファン感謝祭 うらバコバコバスツアー2025 補欠者救済？サンバDEカーニバル！！！</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmdg009&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mdg00009/mdg00009pl.jpg" alt="MOODYZファン感謝祭 バコバス夏の陣" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>MOODYZファン感謝祭 バコバス夏の陣</h3></div></a>
+  </div>
+</section>
+<section class="related-block">
+  <h2>八木奈々の作品</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmizd00450&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mizd00450/mizd00450pl.jpg" alt="八木奈々に沼る10時間。30本番BESTVol.4" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>八木奈々に沼る10時間。30本番BESTVol.4</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00389&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00389/mida00389pl.jpg" alt="引きニート喪女な妹のオナニーを目撃してしまった僕は理性が崩壊。妹がイッてるのに気づかず爆走ピストン 八木奈々" loading="lazy"></div><div class="body"><p class="price">350円 / 30%OFF</p><h3>引きニート喪女な妹のオナニーを目撃してしまった僕は理性が崩壊。妹がイッてるのに気づかず爆走ピストン 八木奈々</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00072&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00072/mida00072pl.jpg" alt="衝撃超スクープ！ハニートラップを仕掛けてナンパ師にお持ち帰りされた八木奈々盗撮スキャンダル映像 そのままAV発売！プライベートSEX丸裸スペシャル" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>衝撃超スクープ！ハニートラップを仕掛けてナンパ師にお持ち帰りされた八木奈々盗撮スキャンダル映像 そのままAV発売！プライベートSEX丸裸スペシャル</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmizd00446&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mizd00446/mizd00446pl.jpg" alt="こんなラブラブな青春したかった！鬼エロ激かわ制服J系に何度も痴女られ続けたボクBEST" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>こんなラブラブな青春したかった！鬼エロ激かわ制服J系に何度も痴女られ続けたボクBEST</h3></div></a>
+  </div>
+</section>
+</div>
+
         <a class="back" href="index.html">← Back</a>
       </div>
     </article>

@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.11.0
+# Version: 2.12.0
 # Date: 2026-09-16
-# Summary: TYPEを公式ジャンルにし、ReviewはX投稿文で再生成
+# Summary: 記事下に同じシリーズ・同じ女優の関連作品を出す
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -19,10 +19,13 @@ import requests
 
 from modules.ai_generator import (
     extract_card_summary,
-    generate_article_html,
-    review_text_for_article,
 )
-from modules.dmm_api import FanzaItem
+from modules.dmm_api import (
+    FanzaItem,
+    RelatedWorks,
+    fetch_fanza_item_by_content_id,
+    fetch_related_works,
+)
 from modules.moods import infer_moods
 
 logger = logging.getLogger(__name__)
@@ -183,6 +186,10 @@ def _item_with_html_prices(item: FanzaItem, raw_html: str) -> FanzaItem:
         actresses=item.actresses,
         maker=item.maker,
         comment=item.comment,
+        series=item.series,
+        series_id=item.series_id,
+        actress_ids=item.actress_ids,
+        maker_id=item.maker_id,
     )
 
 
@@ -196,6 +203,65 @@ def _format_price_display(item: FanzaItem) -> str:
     if item.discount_percent is not None:
         return f"いま約{int(item.discount_percent)}%OFF"
     return "価格は公式サイトでご確認ください"
+
+
+def _related_price_line(item: FanzaItem) -> str:
+    if item.discount_percent is not None and item.discount_percent >= 30 and item.sale_price is not None:
+        return f"{item.sale_price:,}円 / {int(item.discount_percent)}%OFF"
+    if item.sale_price is not None:
+        return f"{item.sale_price:,}円"
+    if item.list_price is not None:
+        return f"{item.list_price:,}円"
+    return "公式で確認"
+
+
+def _render_related_card(item: FanzaItem) -> str:
+    href = html.escape(item.affiliate_url, quote=True)
+    title = html.escape(item.title)
+    price = html.escape(_related_price_line(item))
+    thumb = ""
+    if item.image_url:
+        src = html.escape(item.image_url, quote=True)
+        thumb = f'<div class="thumb"><img src="{src}" alt="{title}" loading="lazy"></div>'
+    else:
+        thumb = '<div class="thumb"></div>'
+    return (
+        f'<a class="related-card" href="{href}" rel="nofollow sponsored noopener" '
+        f'target="_blank">{thumb}<div class="body"><p class="price">{price}</p>'
+        f"<h3>{title}</h3></div></a>"
+    )
+
+
+def _render_related_section(title: str, items: tuple[FanzaItem, ...] | list[FanzaItem]) -> str:
+    if not items:
+        return ""
+    heading = html.escape(title)
+    cards = "\n".join(_render_related_card(item) for item in items)
+    return (
+        f"<section class=\"related-block\">\n"
+        f"  <h2>{heading}</h2>\n"
+        f"  <div class=\"related-grid\">\n    {cards}\n  </div>\n"
+        f"</section>\n"
+    )
+
+
+def render_related_html(related: RelatedWorks | None) -> str:
+    """記事下の関連作品HTML。空なら何も出さない。"""
+    if related is None:
+        return ""
+    parts: list[str] = []
+    if related.series_items:
+        label = f"同じシリーズ：{related.series_name}" if related.series_name else "同じシリーズ"
+        parts.append(_render_related_section(label, related.series_items))
+    if related.actress_items:
+        label = f"{related.actress_name}の作品" if related.actress_name else "同じ出演"
+        parts.append(_render_related_section(label, related.actress_items))
+    if related.maker_items:
+        label = f"同じメーカー：{related.maker_name}" if related.maker_name else "同じメーカー"
+        parts.append(_render_related_section(label, related.maker_items))
+    if not parts:
+        return ""
+    return '<div class="related">\n' + "".join(parts) + "</div>\n"
 
 
 def _load_template(name: str) -> str:
@@ -284,6 +350,7 @@ def _render_article_page(
     *,
     pages_base_url: str,
     summary: str = "",
+    related: RelatedWorks | None = None,
 ) -> str:
     """個別記事 HTML をテンプレートから生成する。"""
     page_title = html.escape(item.title)
@@ -333,6 +400,7 @@ def _render_article_page(
             "DISCOUNT_BADGE": discount_badge,
             "PRICE_LINE": price_line,
             "ARTICLE_BODY": article_html_body,
+            "RELATED_BLOCK": render_related_html(related),
             "AFFILIATE_URL": affiliate,
             "YEAR": str(datetime.now(timezone.utc).year),
         },
@@ -425,6 +493,7 @@ def write_article_and_update_index(
     summary: str | None = None,
     moods: list[str] | None = None,
     created_at: str | None = None,
+    related: RelatedWorks | None = None,
 ) -> Path:
     """
     個別記事 HTML を書き出し、index.html とメタデータを更新する。
@@ -452,6 +521,7 @@ def write_article_and_update_index(
         article_html_body,
         pages_base_url=github_pages_base_url,
         summary=card_summary,
+        related=related,
     )
     article_path.write_text(page_html, encoding="utf-8")
     logger.info("記事 HTML を出力: %s", article_path)
@@ -554,12 +624,16 @@ def refresh_published_cards(
     *,
     github_pages_base_url: str,
     gemini_client=None,
+    dmm_api_id: str = "",
+    dmm_affiliate_id: str = "",
 ) -> int:
     """
-    既存記事を現行テンプレで書き直し、カード要約とTYPEタグも更新する。
+    既存記事を現行テンプレで書き直し、関連作品を付け直す。
 
+    Review本文は公開済みのものを残す。
     戻り値: 更新した件数
     """
+    _ = gemini_client
     docs_path = docs_dir()
     entries = _load_index_entries(docs_path)
     if not entries:
@@ -574,22 +648,28 @@ def refresh_published_cards(
             continue
         page_html = article_path.read_text(encoding="utf-8")
         stub = _item_from_published_page(entry, page_html)
-        if stub.image_url:
-            save_jacket_cover(stub.content_id, stub.image_url)
-        page_url = build_cushion_page_url(github_pages_base_url, stub.content_id)
-        review_text = review_text_for_article(
-            stub,
-            page_url=page_url,
-            client=gemini_client,
-        )
-        body = generate_article_html(stub, review_text=review_text)
+        live = None
+        related = RelatedWorks()
+        if dmm_api_id and dmm_affiliate_id:
+            live = fetch_fanza_item_by_content_id(
+                dmm_api_id,
+                dmm_affiliate_id,
+                stub.content_id,
+            )
+            if live is not None:
+                related = fetch_related_works(dmm_api_id, dmm_affiliate_id, live)
+        item = live or stub
+        if item.image_url:
+            save_jacket_cover(item.content_id, item.image_url)
+        body = _article_body_fragment(page_html)
         write_article_and_update_index(
-            stub,
+            item,
             body,
             github_pages_base_url=github_pages_base_url,
-            summary=extract_card_summary(body, stub, review_text=review_text),
-            moods=infer_moods(stub, summary=review_text),
+            summary=entry.summary,
+            moods=entry.moods or infer_moods(item, summary=entry.summary),
             created_at=entry.created_at,
+            related=related,
         )
         latest = [
             e for e in _load_index_entries(docs_path) if e.content_id == entry.content_id

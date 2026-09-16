@@ -1,7 +1,7 @@
 <!--
-Version: 2.8.0
+Version: 2.9.0
 Date: 2026-09-16
-Summary: twitter:card を付けてジャケットをリンクプレビューに使う
+Summary: 記事下に同じシリーズ・同じ女優の関連作品を出す
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -249,6 +249,66 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
       font-size: 0.9rem;
       letter-spacing: 0.04em;
     }
+    .related {
+      margin-top: 2.4rem;
+      display: grid;
+      gap: 1.6rem;
+    }
+    .related-block h2 {
+      margin: 0 0 0.85rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+    .related-card {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .related-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(212, 180, 131, 0.4);
+    }
+    .related-card .thumb {
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      background: #0b0d12;
+    }
+    .related-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .related-card .body {
+      padding: 0.75rem 0.85rem 0.9rem;
+    }
+    .related-card .price {
+      margin: 0 0 0.35rem;
+      color: var(--gold);
+      font-size: 0.78rem;
+    }
+    .related-card h3 {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
     .site-footer {
       border-top: 1px solid var(--line);
       background: rgba(8, 10, 14, 0.55);
@@ -271,6 +331,7 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
     @media (max-width: 640px) {
       .article-body { padding: 1.25rem 1rem 1.6rem; }
       .cta { font-size: 0.98rem; min-height: 54px; }
+      .related-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -294,7 +355,7 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
       <div class="article-body">
         <span class="badge">30% OFF</span>
         <h1>エッチ覚醒4本番 もっと、もっと、チ○ポアクメ開発挑戦！奇跡の原石 猛烈SEX猛特訓7コーナー 井上もも</h1>
-        <p class="meta">定価 500円 → 今 350円</p>
+        <p class="meta">500円</p>
         <p class="teaser">Official site is here. Read if you want.</p>
         <a class="cta-early" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00512&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank">Official site →</a>
         <div class="content">
@@ -308,12 +369,23 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
   <li>フェラ</li>
   <li>3P・4P</li>
 </ul>
-
         </div>
         <div class="cta-panel">
           <p>Price and sample are on FANZA.</p>
           <a class="cta" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00512&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank">Buy on FANZA →</a>
         </div>
+        <div class="related">
+<section class="related-block">
+  <h2>井上ももの作品</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00764&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00764/mida00764pl.jpg" alt="ねっちり丹念クリいじめの快感が忘れられなくて…電車痴●の虜になった制服女子サイレント輪●されておもらし羞恥絶頂を繰り返したワタシ。 井上もも" loading="lazy"></div><div class="body"><p class="price">2,180円</p><h3>ねっちり丹念クリいじめの快感が忘れられなくて…電車痴●の虜になった制服女子サイレント輪●されておもらし羞恥絶頂を繰り返したワタシ。 井上もも</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00493&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00493/mida00493pl.jpg" alt="井上もも 奇跡のザ・原石 AV DEBUT" loading="lazy"></div><div class="body"><p class="price">500円</p><h3>井上もも 奇跡のザ・原石 AV DEBUT</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmdvr00419&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mdvr00419/mdvr00419pl.jpg" alt="【VR】青春の記憶を上書きしてくれる学校イチのアイドルは、僕だけの彼女。 ももちゃんと2人、放課後はじめてのラブホお泊りデートで濃厚で幸せな思い出性交VR 井上もも" loading="lazy"></div><div class="body"><p class="price">1,480円</p><h3>【VR】青春の記憶を上書きしてくれる学校イチのアイドルは、僕だけの彼女。 ももちゃんと2人、放課後はじめてのラブホお泊りデートで濃厚で幸せな思い出性交VR 井上もも</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dmida00728&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mida00728/mida00728pl.jpg" alt="担任教師の僕は生徒の誘惑に負けて放課後ラブホで何度も、何度も、セックスしてしまった… 井上もも" loading="lazy"></div><div class="body"><p class="price">2,180円</p><h3>担任教師の僕は生徒の誘惑に負けて放課後ラブホで何度も、何度も、セックスしてしまった… 井上もも</h3></div></a>
+  </div>
+</section>
+</div>
+
         <a class="back" href="index.html">← Back</a>
       </div>
     </article>

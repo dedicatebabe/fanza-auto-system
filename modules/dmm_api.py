@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.4.0
+# Version: 1.5.0
 # Date: 2026-09-16
-# Summary: 公式紹介文 comment を保持する
+# Summary: 同じシリーズ・同じ女優を売上順で関連取得する
 # ==========================================
 """DMM アフィリエイト API v3 連携モジュール。"""
 
@@ -24,6 +24,8 @@ FLOOR_VIDEOA = "videoa"
 DEFAULT_HITS = 100
 MAX_FETCH_PAGES = 10
 MIN_SALE_DISCOUNT_PERCENT = 30.0
+RELATED_FETCH_HITS = 20
+RELATED_LIMIT = 4
 
 FetchMode = Literal["sale", "rank"]
 
@@ -46,6 +48,22 @@ class FanzaItem:
     actresses: tuple[str, ...] = ()
     maker: str = ""
     comment: str = ""
+    series: str = ""
+    series_id: str = ""
+    actress_ids: tuple[str, ...] = ()
+    maker_id: str = ""
+
+
+@dataclass(frozen=True)
+class RelatedWorks:
+    """記事下に出す関連作品。"""
+
+    series_name: str = ""
+    series_items: tuple[FanzaItem, ...] = ()
+    actress_name: str = ""
+    actress_items: tuple[FanzaItem, ...] = ()
+    maker_name: str = ""
+    maker_items: tuple[FanzaItem, ...] = ()
 
 
 def _parse_yen(value: Any) -> int | None:
@@ -78,36 +96,65 @@ def _clean_person_name(name: str) -> str:
     return text.split("（")[0].split("(")[0].strip() or text
 
 
-def _iteminfo_names(iteminfo: dict[str, Any], key: str, *, limit: int = 8) -> tuple[str, ...]:
-    """iteminfo の name 配列を取り出す。"""
+def _iteminfo_id_names(
+    iteminfo: dict[str, Any],
+    key: str,
+    *,
+    limit: int = 8,
+    clean_person: bool = False,
+) -> tuple[tuple[str, str], ...]:
+    """iteminfo の id と name を取り出す。"""
     rows = iteminfo.get(key)
     if not isinstance(rows, list):
         return ()
-    names: list[str] = []
+    pairs: list[tuple[str, str]] = []
     for row in rows:
         if not isinstance(row, dict):
             continue
-        raw = str(row.get("name") or "").strip()
-        if not raw:
+        raw_name = str(row.get("name") or "").strip()
+        if not raw_name:
             continue
-        cleaned = _clean_person_name(raw) if key == "actress" else raw
-        if cleaned and cleaned not in names:
-            names.append(cleaned)
-        if len(names) >= limit:
+        name = _clean_person_name(raw_name) if clean_person else raw_name
+        item_id = str(row.get("id") or "").strip()
+        if name and (item_id, name) not in pairs:
+            pairs.append((item_id, name))
+        if len(pairs) >= limit:
             break
-    return tuple(names)
+    return tuple(pairs)
 
 
-def _extract_structured_info(raw_item: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...], str]:
-    """ジャンル・出演・メーカーを API の iteminfo から取る。"""
+def _iteminfo_names(iteminfo: dict[str, Any], key: str, *, limit: int = 8) -> tuple[str, ...]:
+    """iteminfo の name 配列を取り出す。"""
+    clean_person = key == "actress"
+    return tuple(
+        name
+        for _item_id, name in _iteminfo_id_names(
+            iteminfo,
+            key,
+            limit=limit,
+            clean_person=clean_person,
+        )
+    )
+
+
+def _extract_structured_info(
+    raw_item: dict[str, Any],
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...], str, str, str, str]:
+    """ジャンル・出演・メーカー・シリーズを API の iteminfo から取る。"""
     iteminfo = raw_item.get("iteminfo") or {}
     if not isinstance(iteminfo, dict):
         iteminfo = {}
     genres = _iteminfo_names(iteminfo, "genre", limit=8)
-    actresses = _iteminfo_names(iteminfo, "actress", limit=6)
-    makers = _iteminfo_names(iteminfo, "maker", limit=1)
-    maker = makers[0] if makers else ""
-    return genres, actresses, maker
+    actress_pairs = _iteminfo_id_names(iteminfo, "actress", limit=6, clean_person=True)
+    actresses = tuple(name for _aid, name in actress_pairs)
+    actress_ids = tuple(aid for aid, _name in actress_pairs)
+    maker_pairs = _iteminfo_id_names(iteminfo, "maker", limit=1)
+    maker_id = maker_pairs[0][0] if maker_pairs else ""
+    maker = maker_pairs[0][1] if maker_pairs else ""
+    series_pairs = _iteminfo_id_names(iteminfo, "series", limit=1)
+    series_id = series_pairs[0][0] if series_pairs else ""
+    series = series_pairs[0][1] if series_pairs else ""
+    return genres, actresses, actress_ids, maker, maker_id, series, series_id
 
 
 def _extract_description(
@@ -187,7 +234,7 @@ def _normalize_item(raw: dict[str, Any]) -> FanzaItem | None:
         except (TypeError, ValueError):
             review_count = None
 
-    genres, actresses, maker = _extract_structured_info(raw)
+    genres, actresses, actress_ids, maker, maker_id, series, series_id = _extract_structured_info(raw)
     description = _extract_description(
         genres=genres,
         actresses=actresses,
@@ -210,21 +257,23 @@ def _normalize_item(raw: dict[str, Any]) -> FanzaItem | None:
         actresses=actresses,
         maker=maker,
         comment=comment,
+        series=series,
+        series_id=series_id,
+        actress_ids=actress_ids,
+        maker_id=maker_id,
     )
 
 
-def _fetch_item_list_page(
+def _fetch_item_list(
     api_id: str,
     affiliate_id: str,
     *,
-    mode: FetchMode,
-    offset: int,
+    sort: str = "rank",
+    offset: int = 1,
     hits: int = DEFAULT_HITS,
+    extra: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """ItemList API を1ページ分呼び出す。"""
-    # sale も rank で取得し、割引率はクライアント側で判定する。
-    # sort=price は高額作品が多く、割引差分が出にくい。
-    sort_param = "rank"
     params = {
         "api_id": api_id,
         "affiliate_id": affiliate_id,
@@ -233,11 +282,15 @@ def _fetch_item_list_page(
         "floor": FLOOR_VIDEOA,
         "hits": str(hits),
         "offset": str(max(1, offset)),
-        "sort": sort_param,
+        "sort": sort,
         "output": "json",
     }
+    if extra:
+        for key, value in extra.items():
+            if value:
+                params[key] = value
     url = f"{ITEM_LIST_URL}?{urlencode(params)}"
-    logger.debug("DMM API リクエスト: offset=%s sort=%s mode=%s", offset, sort_param, mode)
+    logger.debug("DMM API リクエスト: offset=%s sort=%s extra=%s", offset, sort, extra)
     response = requests.get(url, timeout=60)
     response.raise_for_status()
     payload = response.json()
@@ -250,6 +303,27 @@ def _fetch_item_list_page(
     if not isinstance(items, list):
         return []
     return [i for i in items if isinstance(i, dict)]
+
+
+def _fetch_item_list_page(
+    api_id: str,
+    affiliate_id: str,
+    *,
+    mode: FetchMode,
+    offset: int,
+    hits: int = DEFAULT_HITS,
+) -> list[dict[str, Any]]:
+    """投稿候補用の ItemList を1ページ分呼び出す。"""
+    _ = mode
+    # sale も rank で取得し、割引率はクライアント側で判定する。
+    # sort=price は高額作品が多く、割引差分が出にくい。
+    return _fetch_item_list(
+        api_id,
+        affiliate_id,
+        sort="rank",
+        offset=offset,
+        hits=hits,
+    )
 
 
 def _item_matches_mode(item: FanzaItem, mode: FetchMode) -> bool:
@@ -367,3 +441,110 @@ def fetch_fanza_item_by_content_id(
         if normalized is not None:
             return normalized
     return None
+
+
+def _normalize_list(
+    raw_items: list[dict[str, Any]],
+    *,
+    exclude_ids: set[str],
+    limit: int,
+) -> list[FanzaItem]:
+    """API生データから関連候補を売上順のまま正規化する。"""
+    picked: list[FanzaItem] = []
+    seen = set(exclude_ids)
+    for raw in raw_items:
+        item = _normalize_item(raw)
+        if item is None or item.content_id in seen:
+            continue
+        seen.add(item.content_id)
+        picked.append(item)
+        if len(picked) >= limit:
+            break
+    return picked
+
+
+def _fetch_related_by_article(
+    api_id: str,
+    affiliate_id: str,
+    *,
+    article: str,
+    article_id: str,
+    exclude_ids: set[str],
+    limit: int = RELATED_LIMIT,
+) -> list[FanzaItem]:
+    """article / article_id 指定で売上順の関連作品を取る。"""
+    if not article_id:
+        return []
+    try:
+        raw_items = _fetch_item_list(
+            api_id,
+            affiliate_id,
+            sort="rank",
+            offset=1,
+            hits=RELATED_FETCH_HITS,
+            extra={"article": article, "article_id": article_id},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("関連作品の取得に失敗 article=%s id=%s: %s", article, article_id, exc)
+        return []
+    return _normalize_list(raw_items, exclude_ids=exclude_ids, limit=limit)
+
+
+def fetch_related_works(
+    api_id: str,
+    affiliate_id: str,
+    item: FanzaItem,
+) -> RelatedWorks:
+    """
+    同じシリーズ、同じ主演女優の作品を FANZA 売上順で取得する。
+
+    取れない場合は空。投稿本体は落とさない。
+    """
+    exclude = {item.content_id}
+    series_items = _fetch_related_by_article(
+        api_id,
+        affiliate_id,
+        article="series",
+        article_id=item.series_id,
+        exclude_ids=exclude,
+    )
+    exclude.update(x.content_id for x in series_items)
+
+    actress_id = item.actress_ids[0] if item.actress_ids else ""
+    actress_name = item.actresses[0] if item.actresses else ""
+    actress_items = _fetch_related_by_article(
+        api_id,
+        affiliate_id,
+        article="actress",
+        article_id=actress_id,
+        exclude_ids=exclude,
+    )
+    exclude.update(x.content_id for x in actress_items)
+
+    maker_items: list[FanzaItem] = []
+    if not series_items and not actress_items:
+        maker_items = _fetch_related_by_article(
+            api_id,
+            affiliate_id,
+            article="maker",
+            article_id=item.maker_id,
+            exclude_ids=exclude,
+        )
+    logger.info(
+        "関連作品 content_id=%s series=%s(%s) actress=%s(%s) maker=%s(%s)",
+        item.content_id,
+        len(series_items),
+        item.series or "-",
+        len(actress_items),
+        actress_name or "-",
+        len(maker_items),
+        item.maker or "-",
+    )
+    return RelatedWorks(
+        series_name=item.series,
+        series_items=tuple(series_items),
+        actress_name=actress_name,
+        actress_items=tuple(actress_items),
+        maker_name=item.maker,
+        maker_items=tuple(maker_items),
+    )

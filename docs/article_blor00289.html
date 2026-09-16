@@ -1,7 +1,7 @@
 <!--
-Version: 2.8.0
+Version: 2.9.0
 Date: 2026-09-16
-Summary: twitter:card を付けてジャケットをリンクプレビューに使う
+Summary: 記事下に同じシリーズ・同じ女優の関連作品を出す
 -->
 <!DOCTYPE html>
 <html lang="ja">
@@ -249,6 +249,66 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
       font-size: 0.9rem;
       letter-spacing: 0.04em;
     }
+    .related {
+      margin-top: 2.4rem;
+      display: grid;
+      gap: 1.6rem;
+    }
+    .related-block h2 {
+      margin: 0 0 0.85rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+    .related-card {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .related-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(212, 180, 131, 0.4);
+    }
+    .related-card .thumb {
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      background: #0b0d12;
+    }
+    .related-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .related-card .body {
+      padding: 0.75rem 0.85rem 0.9rem;
+    }
+    .related-card .price {
+      margin: 0 0 0.35rem;
+      color: var(--gold);
+      font-size: 0.78rem;
+    }
+    .related-card h3 {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
     .site-footer {
       border-top: 1px solid var(--line);
       background: rgba(8, 10, 14, 0.55);
@@ -271,6 +331,7 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
     @media (max-width: 640px) {
       .article-body { padding: 1.25rem 1rem 1.6rem; }
       .cta { font-size: 0.98rem; min-height: 54px; }
+      .related-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -294,7 +355,7 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
       <div class="article-body">
         <span class="badge">30% OFF</span>
         <h1>ドSな美人絵師さん 男を責めるのが趣味の強めクールビューティーがチ●ポ堕ち 最初は余裕たっぷりだったが、正確な巨根ピストン喰らい続け メス顔晒してイってしまう！</h1>
-        <p class="meta">定価 500円 → 今 350円</p>
+        <p class="meta">500円</p>
         <p class="teaser">Official site is here. Read if you want.</p>
         <a class="cta-early" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dblor00289&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank">Official site →</a>
         <div class="content">
@@ -309,12 +370,23 @@ Summary: twitter:card を付けてジャケットをリンクプレビューに�
   <li>マッサージ・リフレ</li>
   <li>妄想族</li>
 </ul>
-
         </div>
         <div class="cta-panel">
           <p>Price and sample are on FANZA.</p>
           <a class="cta" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dblor00289&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank">Buy on FANZA →</a>
         </div>
+        <div class="related">
+<section class="related-block">
+  <h2>同じメーカー：ブロッコリー/妄想族</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dblor00264&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/blor00264/blor00264pl.jpg" alt="とにかく明るいハイテンション娘 爆笑した直後に寄り目オホイキ！ハメ潮ビュービュー吹かされガチ恋セックスでチ●ポ堕ち" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>とにかく明るいハイテンション娘 爆笑した直後に寄り目オホイキ！ハメ潮ビュービュー吹かされガチ恋セックスでチ●ポ堕ち</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dblor00294&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/blor00294/blor00294pl.jpg" alt="インドアオタク女子 チ●ポで堕ちる 推しキャラにキャッキャする様子が可愛すぎ おちんちんへの興味が抑えられずAVに出てしまう。結果…「チ●ポきもちいぃぃ」絶叫中イキ" loading="lazy"></div><div class="body"><p class="price">350円 / 30%OFF</p><h3>インドアオタク女子 チ●ポで堕ちる 推しキャラにキャッキャする様子が可愛すぎ おちんちんへの興味が抑えられずAVに出てしまう。結果…「チ●ポきもちいぃぃ」絶叫中イキ</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dblor00128&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/blor00128/blor00128pl.jpg" alt="ボーイッシュで男友達みたいな彼女は隠れ巨乳でした！ 飲み会とかで盛り上げてくれる面白い女子を半泣きアクメに追い込んだ！" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>ボーイッシュで男友達みたいな彼女は隠れ巨乳でした！ 飲み会とかで盛り上げてくれる面白い女子を半泣きアクメに追い込んだ！</h3></div></a>
+<a class="related-card" href="https://al.fanza.co.jp/?lurl=https%3A%2F%2Fvideo.dmm.co.jp%2Fav%2Fcontent%2F%3Fid%3Dblor00270&amp;af_id=nightlibrary-990&amp;ch=api" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/blor00270/blor00270pl.jpg" alt="生真面目な性格の学習塾講師おねえさん 丁寧な受け答えだけどパンツには本気ジミベットリ…巨根のガン突きくらって理性ぶっ飛び 下品なイグイグ絶叫" loading="lazy"></div><div class="body"><p class="price">210円 / 30%OFF</p><h3>生真面目な性格の学習塾講師おねえさん 丁寧な受け答えだけどパンツには本気ジミベットリ…巨根のガン突きくらって理性ぶっ飛び 下品なイグイグ絶叫</h3></div></a>
+  </div>
+</section>
+</div>
+
         <a class="back" href="index.html">← Back</a>
       </div>
     </article>
