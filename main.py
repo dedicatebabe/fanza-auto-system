@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.7.0
-# Date: 2026-09-14
-# Summary: Xは紹介ページ＋ジャケット画像。FANZA直リンクは出さない
+# Version: 2.8.0
+# Date: 2026-09-16
+# Summary: X投稿にローカルジャケットを添付する
 # ==========================================
 """
 FANZA（DMM API v3）のセール・人気作品を取得し、
@@ -30,6 +30,7 @@ from modules.dmm_api import FetchMode, fetch_fanza_item_for_posting
 from modules.moods import infer_moods
 from modules.page_builder import (
     build_cushion_page_url,
+    cover_file_for,
     refresh_published_cards,
     write_article_and_update_index,
 )
@@ -212,6 +213,7 @@ def main() -> int:
             access_secret=x_access_secret,
             skip_sleep=args.skip_x_sleep,
             image_url=item.image_url,
+            local_image_path=str(cover_file_for(item.content_id)),
         )
 
         now_iso = datetime.now(timezone.utc).isoformat()

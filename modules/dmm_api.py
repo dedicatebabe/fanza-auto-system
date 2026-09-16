@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.3.0
-# Date: 2026-09-14
-# Summary: ジャンル・出演・メーカーを構造化して保持
+# Version: 1.4.0
+# Date: 2026-09-16
+# Summary: 公式紹介文 comment を保持する
 # ==========================================
 """DMM アフィリエイト API v3 連携モジュール。"""
 
@@ -45,6 +45,7 @@ class FanzaItem:
     genres: tuple[str, ...] = ()
     actresses: tuple[str, ...] = ()
     maker: str = ""
+    comment: str = ""
 
 
 def _parse_yen(value: Any) -> int | None:
@@ -192,6 +193,7 @@ def _normalize_item(raw: dict[str, Any]) -> FanzaItem | None:
         actresses=actresses,
         maker=maker,
     )
+    comment = str(raw.get("comment") or "").strip()
 
     return FanzaItem(
         content_id=content_id,
@@ -207,6 +209,7 @@ def _normalize_item(raw: dict[str, Any]) -> FanzaItem | None:
         genres=genres,
         actresses=actresses,
         maker=maker,
+        comment=comment,
     )
 
 

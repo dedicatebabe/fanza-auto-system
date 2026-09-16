@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.10.0
-# Date: 2026-09-14
-# Summary: X本文は紹介ページURLのみ。FANZA直リンクは出さない
+# Version: 2.16.0
+# Date: 2026-09-16
+# Summary: X文をAVソムリエの切り口1本で生成する
 # ==========================================
 """Google Gemini API を用いたコンテンツ生成モジュール。"""
 
@@ -10,6 +10,7 @@ from __future__ import annotations
 import html
 import logging
 import os
+import random
 import re
 from pathlib import Path
 
@@ -24,11 +25,24 @@ MODEL_NAME = "gemini-3.6-flash"
 MAX_TWEET_LENGTH = 280
 MIN_SALE_DISCOUNT_FOR_COPY = 30.0
 CTA_LINE = "👇詳細はこちら"
+DROP_X_TAGS = (
+    "#FANZAおすすめ",
+    "#FANZA",
+    "#アダルト",
+)
 BANNED_X_HOOKS = (
     "マジでこの作品",
     "刺さる人には刺さりすぎてヤバい",
     "全男が好きなやつ来た",
     "刺さる",
+    "この値段なら買い得",
+    "今のうちにチェックしておくのが吉",
+    "詳細はこちら",
+    "をご紹介",
+    "おすすめ記事",
+    "サンプル見て判断",
+    "今夜の候補",
+    "初撮りの胸",
 )
 ARTICLE_HEADING_FIXES = (
     ("In a nutshell", "Review"),
@@ -88,9 +102,6 @@ def _sanitize_for_x(text: str, *, max_len: int = 400) -> str:
         (r"射精|絶頂|性交|挿入", "密着した展開"),
         (r"フェラ|パイズリ|手コキ|脚コキ|おま[●\*]|まん[●\*]", "濃厚な密着"),
         (r"ドピュドピュ|暴発", ""),
-        (r"おっぱい|裸|ヌード", "肌の露出"),
-        (r"巨乳|爆乳|美乳|Hカップ", "グラマー"),
-        (r"NTR|寝取り・寝取られ・NTR|寝取られ", "禁断の三角関係"),
         (r"キメセク", "危険な誘惑"),
         (r"緊縛", "拘束プレイ"),
         (r"アナル", "ディープな展開"),
@@ -101,14 +112,20 @@ def _sanitize_for_x(text: str, *, max_len: int = 400) -> str:
     return cleaned[:max_len] if cleaned else "人気エンタメ作品"
 
 
+def official_intro_text(item: FanzaItem) -> str:
+    """APIのcommentがあればそれ、なければ公式タイトル（紹介文兼ねる）。"""
+    comment = (item.comment or "").strip()
+    compact = re.sub(r"\s+", "", comment)
+    if len(compact) >= 18:
+        return comment
+    return (item.title or "").strip()
+
+
 def _build_item_context(item: FanzaItem, *, for_x: bool = False) -> str:
     """プロンプト用の作品情報テキストを組み立てる。"""
-    if for_x:
-        title = _sanitize_for_x(item.title, max_len=80)
-        description = _sanitize_for_x(item.description, max_len=400)
-    else:
-        title = (item.title or "").strip()[:180]
-        description = (item.description or "").strip()[:800]
+    title = (item.title or "").strip()[:180]
+    description = (item.description or "").strip()[:800]
+    intro = official_intro_text(item)[:500]
     lines = [
         f"タイトル: {title}",
         f"content_id: {item.content_id}",
@@ -119,7 +136,12 @@ def _build_item_context(item: FanzaItem, *, for_x: bool = False) -> str:
         lines.append(f"割引率: 約{int(item.discount_percent)}%OFF")
     if item.review_average is not None:
         lines.append(f"レビュー平均: {item.review_average}（{item.review_count or 0}件）")
-    lines.append("概要・属性:\n" + description)
+    actresses = item.actresses or ()
+    if actresses:
+        lines.append("出演: " + "、".join(actresses[:4]))
+    lines.append("公式紹介文:\n" + intro)
+    if not for_x:
+        lines.append("概要・属性:\n" + description)
     return "\n".join(lines)
 
 
@@ -372,54 +394,101 @@ def _fallback_article_html(item: FanzaItem) -> str:
     return _template_article_html(item)
 
 
-def _fallback_x_hook(item: FanzaItem) -> str:
-    """作品ごとに変える X の1行目。定型の『刺さる』は使わない。"""
-    blob = f"{item.title}\n{item.description}"
-    ntr = any(k in blob for k in ("NTR", "寝取", "内緒", "禁断"))
-    vr = any(k in blob for k in ("VR", "8K"))
-    swim = any(k in blob for k in ("水着", "ビーチ", "ビキニ"))
-    if ntr and vr:
-        return "VRで彼女が目の前で寝取られる。距離が近すぎる"
-    if ntr and swim:
-        return "ビーチで彼氏の前、ビキニのまま崩れる"
-    if ntr:
-        return "彼女が目の前で他の男にイかされるの、好きな人いるだろ"
-    if vr:
-        return "8Kで目の前に胸が来るVR、長いから飛ばして抜ける"
-    if any(k in blob for k in ("Hカップ", "巨乳", "爆乳")) and any(
-        k in blob for k in ("デビュー", "Debut", "専属")
+def _x_actor_name(item: FanzaItem) -> str:
+    actresses = _item_actresses(item)
+    if actresses:
+        return actresses[0]
+    return ""
+
+
+_HARD_X_DROP = re.compile(
+    r"中出し|生ハメ|射精|デカチン|デカマラ|フェラ|パイズリ|"
+    r"レ[●\*xXｘＸ]プ|おま[●\*]|"
+    r"スワッピング|乱痴気|キメセク|ドピュドピュ|筆おろし|etc\."
+)
+
+
+def _is_keyword_salad(sent: str) -> bool:
+    """ジャンルの羅列だけで、話がない文を落とす。"""
+    if _HARD_X_DROP.search(sent) and not re.search(
+        r"彼女|パーティー|お願い|デビュー|ビーチ|兄嫁|はず",
+        sent,
     ):
-        return "Hカップの新人、初撮りで胸が画面いっぱい"
-    if any(k in blob for k in ("デビュー", "Debut", "専属")):
-        return "専属新人の初撮り、顔も身体もまだ慣れてない"
-    if swim:
-        return "ビキニのまま崩れるやつ、野外の視線がエロい"
-    if "母乳" in blob:
-        return "母乳もの。兄嫁なら尚更、サンプル見て判断"
-    line = _situation_line(item)
-    if "詳細はFANZA" in line:
-        short = _sanitize_for_x(item.title, max_len=22)
-        return f"{short}、今夜の候補これ"
-    return _sanitize_for_x(line, max_len=40)
+        return True
+    if sent.count(" ") >= 5 and len(sent) < 50:
+        return True
+    return False
+
+
+def _cut_official_blurb(item: FanzaItem, *, max_len: int = 90) -> str:
+    """公式紹介から、話のある1〜2文を残す。"""
+    text = official_intro_text(item).replace("パ―ティー", "パーティー")
+    text = re.sub(r"^(?:【[^】]*】)+", "", text).strip()
+    chunks = [p.strip() for p in re.split(r"(?<=[。…！？])", text) if p.strip()]
+    if not chunks:
+        chunks = [text]
+    picked: list[str] = []
+    for chunk in chunks:
+        if _is_keyword_salad(chunk):
+            continue
+        if re.match(r"^(?:交姦|キメセク)*NTR\b", chunk) and not re.search(
+            r"彼女|パーティー|はず",
+            chunk,
+        ):
+            continue
+        picked.append(chunk)
+        if len(picked) >= 2 or len("".join(picked)) >= 55:
+            break
+    blurb = "".join(picked) if picked else text
+    blurb = re.sub(r"^(?:交姦)?(?:キメセク)?NTR\s*", "", blurb).strip()
+    hard = _HARD_X_DROP.search(blurb)
+    if hard:
+        blurb = blurb[: hard.start()].rstrip(" 、がのを")
+    blurb = re.sub(r"\s+", " ", blurb).strip(" 、")
+    if blurb and blurb[-1] not in "。…！？」":
+        for sep in ("のに", "たら", "で", "が"):
+            idx = blurb.rfind(sep)
+            if idx >= 12:
+                blurb = blurb[: idx + len(sep)]
+                break
+    if len(blurb) > max_len:
+        cut = blurb[:max_len]
+        if "、" in cut[20:]:
+            cut = cut.rsplit("、", 1)[0]
+        blurb = cut.rstrip("、") + "…"
+    return blurb or _sanitize_for_x(item.title, max_len=40)
+
+
+def _fallback_x_hook(item: FanzaItem) -> str:
+    """公式紹介を短く切った投稿文。作文しない。"""
+    blurb = _cut_official_blurb(item)
+    name = _x_actor_name(item)
+    if name and name not in blurb:
+        return f"{blurb}\n{name}"
+    return blurb
+
+
+def _sale_whisper(item: FanzaItem) -> str:
+    if item.discount_percent is None or item.discount_percent < MIN_SALE_DISCOUNT_FOR_COPY:
+        return ""
+    pct = int(item.discount_percent)
+    return random.choice(
+        (
+            f"いま{pct}%OFF",
+            f"今だけ{pct}%引き",
+            f"{pct}%OFFになってる",
+        )
+    )
 
 
 def _fallback_x_post_text(item: FanzaItem, *, page_url: str) -> str:
-    """Gemini 失敗時のフック型 X 投稿文。"""
+    """公式紹介を短く切った X 投稿文。"""
     hook = _fallback_x_hook(item)
-    short_title = _sanitize_for_x(item.title)[:28]
-    if item.discount_percent is not None and item.discount_percent >= MIN_SALE_DISCOUNT_FOR_COPY:
-        pct = int(item.discount_percent)
-        discount_line = f"いま約{pct}%OFF。この値段なら買い得。"
+    sale = _sale_whisper(item)
+    if sale:
+        text = f"{hook}\n{sale}\n{page_url}"
     else:
-        discount_line = "今のうちにチェックしておくのが吉。"
-    text = (
-        f"{hook}\n"
-        f"{short_title}\n"
-        f"{discount_line}\n"
-        f"{CTA_LINE}\n"
-        f"{page_url}\n"
-        f"#FANZAおすすめ"
-    )
+        text = f"{hook}\n{page_url}"
     return _normalize_x_post(text, page_url=page_url)
 
 
@@ -490,18 +559,24 @@ def generate_article_html(item: FanzaItem, client: genai.Client | None = None) -
 
 
 def _normalize_x_post(text: str, *, page_url: str) -> str:
-    """多行フック投稿を正規化し、紹介ページURLを末尾に固定する。"""
+    """短い紹介文を正規化し、紹介ページURLだけ末尾に固定する。"""
     cleaned = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     cleaned = cleaned.replace(page_url, "").strip()
     cleaned = re.sub(r"[ \t]+", " ", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     lines = [ln.strip() for ln in cleaned.split("\n") if ln.strip()]
+    drop_needles = (
+        CTA_LINE,
+        "詳しいレビュー",
+        "詳細はこちら",
+        "この値段なら買い得",
+        "今のうちにチェックしておくのが吉",
+    )
     lines = [
         ln
         for ln in lines
-        if CTA_LINE not in ln
+        if not any(n in ln for n in drop_needles)
         and not ln.startswith("http")
-        and "詳しいレビュー" not in ln
         and "fanza.co.jp" not in ln.lower()
         and "dmm.co.jp" not in ln.lower()
         and "al.fanza.co.jp" not in ln.lower()
@@ -514,24 +589,25 @@ def _normalize_x_post(text: str, *, page_url: str) -> str:
         kept: list[str] = []
         for part in parts:
             if part.startswith("#"):
-                tag_tokens.append(part)
+                if part not in DROP_X_TAGS:
+                    tag_tokens.append(part)
             else:
                 kept.append(part)
         if kept:
             body_lines.append(" ".join(kept))
 
     body = "\n".join(body_lines).strip()
-    unique_tags = list(dict.fromkeys(tag_tokens))[:2]
+    unique_tags = list(dict.fromkeys(tag_tokens))[:1]
     tags = " ".join(unique_tags).strip()
-    parts = [body, CTA_LINE, page_url]
+    parts = [body, page_url]
     if tags:
         parts.append(tags)
     result = "\n".join(p for p in parts if p).strip()
     if len(result) <= MAX_TWEET_LENGTH:
         return result
-    suffix = f"{CTA_LINE}\n{page_url}"
+    suffix = page_url
     if tags:
-        suffix = f"{suffix}\n{tags}"
+        suffix = f"{page_url}\n{tags}"
     allowed = MAX_TWEET_LENGTH - len(suffix) - 1
     if allowed < 20:
         return suffix[:MAX_TWEET_LENGTH]
@@ -546,33 +622,31 @@ def generate_x_post_text(
     cushion_page_url: str,
 ) -> str:
     """
-    X 投稿用テキストを生成する（フック型・多行）。
+    X 投稿用テキストを生成する（AVソムリエ口調・切り口1本）。
 
     置くURLは紹介ページのみ。FANZA直リンクは入れない。
     """
     page_url = cushion_page_url
-    context = _build_item_context(item, for_x=True)
-    discount_line = "割引情報がない場合は『今見ておく価値あり』と書いてください。"
-    if item.discount_percent is not None:
-        pct = int(item.discount_percent)
-        discount_line = f"3行目では必ず約{pct}%OFF / セール感を強調してください。"
+    actress_name = "、".join(_item_actresses(item)[:3]) or "（表記なし）"
+    synopsis = _sanitize_for_x(official_intro_text(item), max_len=280)
+    title = _sanitize_for_x(item.title, max_len=120)
 
     system_prompt = _load_prompt_file("x_post.txt")
     user_prompt = (
-        "スクロールを止める強力なフック投稿を作って。"
-        "構成はプロンプト指定どおり。FANZAやDMMの直リンクは入れるな。"
-        "『刺さる』『詳しいレビュー』は使うな。語尾はこの作品のシチュで止めろ。\n"
-        f"{discount_line}\n"
-        f"紹介ページURL: {page_url}\n\n"
-        f"作品情報:\n{context}\n\n"
-        f"文字数上限: {MAX_TWEET_LENGTH}（URL含む）。出力は投稿文のみ。"
+        "【作品情報】\n"
+        f"タイトル: {title}\n"
+        f"女優名: {actress_name}\n"
+        f"あらすじ: {synopsis}\n\n"
+        f"紹介ページURL: {page_url}\n"
+        "このURLを最後の行に置け。投稿文のみ出力。"
     )
     logger.info("Gemini: X 投稿文生成を開始 content_id=%s model=%s", item.content_id, MODEL_NAME)
     text = _generate_text(
         client,
         system_prompt=system_prompt,
         user_prompt=user_prompt,
-        temperature=0.95,
+        temperature=0.9,
+        adult_ok=True,
     )
     if not text.strip():
         logger.warning(

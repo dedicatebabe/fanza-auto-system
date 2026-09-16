@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.8.0
-# Date: 2026-09-14
-# Summary: 型枠記事でもジャンル・出演を引き継ぐ
+# Version: 2.10.0
+# Date: 2026-09-16
+# Summary: 公式commentを記事再生成でも引き継ぐ
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -15,16 +15,27 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from modules.ai_generator import extract_card_summary
+import requests
+
+from modules.ai_generator import extract_card_summary, generate_article_html
 from modules.dmm_api import FanzaItem
-from modules.moods import MOOD_OPTIONS, infer_moods, infer_moods_from_text
+from modules.moods import MOOD_OPTIONS, infer_moods
 
 logger = logging.getLogger(__name__)
 
 DOCS_DIR_NAME = "docs"
+COVERS_DIR_NAME = "covers"
 TEMPLATES_DIR_NAME = "templates"
 INDEX_ENTRIES_FILE = ".index_entries.json"
 SITE_NAME = "Yoru no Libre X"
+JACKET_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://www.dmm.co.jp/",
+    "Accept": "image/jpeg,image/png,image/webp,image/*;q=0.8",
+}
 
 
 @dataclass
@@ -48,6 +59,46 @@ def docs_dir() -> Path:
     path = _project_root() / DOCS_DIR_NAME
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def covers_dir() -> Path:
+    path = docs_dir() / COVERS_DIR_NAME
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def cover_relpath_for(content_id: str) -> str:
+    safe_id = re.sub(r"[^\w\-]", "_", content_id)
+    return f"{COVERS_DIR_NAME}/{safe_id}.jpg"
+
+
+def cover_file_for(content_id: str) -> Path:
+    return docs_dir() / cover_relpath_for(content_id)
+
+
+def save_jacket_cover(content_id: str, image_url: str) -> str:
+    """
+    DMM公式ジャケットを docs/covers に保存する。
+
+    戻り値: 保存できた相対パス。失敗時は空文字。
+    """
+    url = (image_url or "").strip()
+    if not url:
+        return ""
+    dest = cover_file_for(content_id)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        response = requests.get(url, headers=JACKET_HEADERS, timeout=30)
+        response.raise_for_status()
+        if len(response.content) < 1024:
+            logger.warning("ジャケットが小さすぎるため保存しない content_id=%s", content_id)
+            return ""
+        dest.write_bytes(response.content)
+        logger.info("ジャケットを保存: %s", dest)
+        return cover_relpath_for(content_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ジャケット保存失敗 content_id=%s: %s", content_id, exc)
+        return ""
 
 
 def templates_dir() -> Path:
@@ -75,6 +126,21 @@ def _parse_yen_from_text(raw: str) -> int | None:
 def extract_prices_from_html(raw_html: str) -> tuple[int | None, int | None, float | None]:
     """本文に残った定価・販売価格・割引率を拾う。"""
     text = raw_html or ""
+    range_match = re.search(
+        r"定価\s*([0-9,]+)円\s*→\s*今\s*([0-9,]+)円",
+        text,
+    )
+    if range_match:
+        list_price = _parse_yen_from_text(range_match.group(1))
+        sale_price = _parse_yen_from_text(range_match.group(2))
+        discount = None
+        if list_price and sale_price and list_price > sale_price:
+            discount = round((1.0 - sale_price / list_price) * 100.0, 1)
+        off_match = re.search(r"約?\s*(\d+)\s*%\s*OFF", text, flags=re.IGNORECASE)
+        if off_match:
+            discount = float(off_match.group(1))
+        return list_price, sale_price, discount
+
     list_match = re.search(r"定価\s*([0-9,]+)円", text)
     sale_match = re.search(r"販売価格[:：]\s*([0-9,]+)円", text)
     if sale_match is None:
@@ -85,6 +151,10 @@ def extract_prices_from_html(raw_html: str) -> tuple[int | None, int | None, flo
     discount = float(off_match.group(1)) if off_match else None
     if discount is None and list_price and sale_price and list_price > sale_price:
         discount = round((1.0 - sale_price / list_price) * 100.0, 1)
+    if sale_price is None and list_price is None:
+        simple = re.search(r'<p class="meta">\s*([0-9,]+)円\s*</p>', text)
+        if simple:
+            sale_price = _parse_yen_from_text(simple.group(1))
     return list_price, sale_price, discount
 
 
@@ -105,6 +175,7 @@ def _item_with_html_prices(item: FanzaItem, raw_html: str) -> FanzaItem:
         genres=item.genres,
         actresses=item.actresses,
         maker=item.maker,
+        comment=item.comment,
     )
 
 
@@ -201,10 +272,17 @@ def _render_article_page(
     page_title = html.escape(item.title)
     meta_source = (summary or item.description.replace("\n", " ")).strip()
     description_meta = html.escape(meta_source[:160])
-    image = html.escape(item.image_url) if item.image_url else ""
     affiliate = html.escape(item.affiliate_url, quote=True)
     canonical = html.escape(build_cushion_page_url(pages_base_url, item.content_id))
     price_line = html.escape(_format_price_display(item))
+    cover_rel = cover_relpath_for(item.content_id)
+    cover_path = cover_file_for(item.content_id)
+    if cover_path.exists():
+        hero_src = cover_rel
+        og_src = html.escape(f"{pages_base_url.rstrip('/')}/{cover_rel}")
+    else:
+        hero_src = html.escape(item.image_url) if item.image_url else ""
+        og_src = hero_src
 
     discount_badge = ""
     if item.discount_percent is not None and item.discount_percent >= 30:
@@ -213,13 +291,16 @@ def _render_article_page(
         )
 
     og_image_tag = ""
-    if image:
-        og_image_tag = f'<meta property="og:image" content="{image}">'
+    if og_src:
+        og_image_tag = (
+            f'<meta property="og:image" content="{og_src}">\n'
+            f'  <meta name="twitter:image" content="{og_src}">'
+        )
 
     hero_block = ""
-    if image:
+    if hero_src:
         hero_block = (
-            f'<div class="hero-media"><img src="{image}" alt="{page_title}" '
+            f'<div class="hero-media"><img src="{hero_src}" alt="{page_title}" '
             f'loading="lazy"></div>'
         )
 
@@ -327,6 +408,11 @@ def write_article_and_update_index(
     article_path = docs_path / filename
     now_iso = created_at or datetime.now(timezone.utc).isoformat()
     priced_item = _item_with_html_prices(item, article_html_body)
+    saved_cover = save_jacket_cover(item.content_id, item.image_url)
+    if cover_file_for(item.content_id).exists():
+        card_image = cover_relpath_for(item.content_id)
+    else:
+        card_image = saved_cover or (item.image_url or "")
     card_summary = (summary or "").strip() or extract_card_summary(
         article_html_body,
         priced_item,
@@ -350,7 +436,7 @@ def write_article_and_update_index(
             title=item.title,
             article_filename=filename,
             created_at=now_iso,
-            image_url=item.image_url or "",
+            image_url=card_image,
             summary=card_summary,
             moods=mood_tags,
         )
@@ -375,9 +461,63 @@ def _article_body_fragment(article_html: str) -> str:
     return article_html
 
 
+def _affiliate_url_from_html(article_html: str) -> str:
+    match = re.search(r'class="cta"[^>]*href="([^"]+)"', article_html)
+    if not match:
+        return ""
+    return html.unescape(match.group(1))
+
+
+def _parse_credit_value(body: str, label: str) -> str:
+    match = re.search(
+        rf"<p>\s*{re.escape(label)}:\s*([^<]+)</p>",
+        body,
+    )
+    if not match:
+        return ""
+    return html.unescape(match.group(1)).strip()
+
+
+def _item_from_published_page(entry: IndexEntry, page_html: str) -> FanzaItem:
+    """公開済みHTMLから型枠再生成用の FanzaItem を復元する。"""
+    body = _article_body_fragment(page_html)
+    list_price, sale_price, discount = extract_prices_from_html(page_html)
+    genres = tuple(
+        html.unescape(g) for g in re.findall(r"<li>(.*?)</li>", body) if g.strip()
+    )
+    actress_raw = _parse_credit_value(body, "出演").replace("、ほか", "")
+    actresses = tuple(p.strip() for p in actress_raw.split("、") if p.strip())
+    maker = _parse_credit_value(body, "メーカー")
+    source_image = entry.image_url
+    if source_image.startswith(COVERS_DIR_NAME + "/"):
+        source_image = ""
+    desc_parts = [
+        f"ジャンル: {' / '.join(genres)}" if genres else "",
+        f"出演: {' / '.join(actresses)}" if actresses else "",
+        f"メーカー: {maker}" if maker else "",
+    ]
+    return FanzaItem(
+        content_id=entry.content_id,
+        title=entry.title,
+        image_url=source_image,
+        affiliate_url=_affiliate_url_from_html(page_html),
+        list_price=list_price,
+        sale_price=sale_price,
+        discount_percent=discount if discount is not None else (
+            30.0 if any(m in entry.moods for m in ("Sale", "On sale", "セール特価")) else None
+        ),
+        review_average=None,
+        review_count=None,
+        description="\n".join(p for p in desc_parts if p),
+        genres=genres,
+        actresses=actresses,
+        maker=maker,
+    )
+
+
 def refresh_published_cards(*, github_pages_base_url: str) -> int:
     """
-    既存記事からカード要約と気分タグを再抽出し、index.html を更新する。
+    既存記事を現行テンプレで書き直し、カード要約と気分タグも更新する。
 
     戻り値: 更新した件数
     """
@@ -394,52 +534,21 @@ def refresh_published_cards(*, github_pages_base_url: str) -> int:
             refreshed.append(entry)
             continue
         page_html = article_path.read_text(encoding="utf-8")
-        body = _article_body_fragment(page_html)
-        list_price, sale_price, discount = extract_prices_from_html(page_html)
-        stub = FanzaItem(
-            content_id=entry.content_id,
-            title=entry.title,
-            image_url=entry.image_url,
-            affiliate_url="",
-            list_price=list_price,
-            sale_price=sale_price,
-            discount_percent=discount if discount is not None else (
-                30.0 if any(m in entry.moods for m in ("Sale", "On sale", "セール特価")) else None
-            ),
-            review_average=None,
-            review_count=None,
-            description=body,
+        stub = _item_from_published_page(entry, page_html)
+        if stub.image_url:
+            save_jacket_cover(stub.content_id, stub.image_url)
+        body = generate_article_html(stub)
+        write_article_and_update_index(
+            stub,
+            body,
+            github_pages_base_url=github_pages_base_url,
+            created_at=entry.created_at,
         )
-        summary = extract_card_summary(body, stub)
-        moods = infer_moods_from_text(
-            f"{entry.title}\n{body}\n{summary}",
-            discount_percent=stub.discount_percent,
-        )
-        price_line = html.escape(_format_price_display(stub))
-        page_html = re.sub(
-            r'<p class="meta">.*?</p>',
-            f'<p class="meta">{price_line}</p>',
-            page_html,
-            count=1,
-        )
-        article_path.write_text(page_html, encoding="utf-8")
-        refreshed.append(
-            IndexEntry(
-                content_id=entry.content_id,
-                title=entry.title,
-                article_filename=entry.article_filename,
-                created_at=entry.created_at,
-                image_url=entry.image_url,
-                summary=summary,
-                moods=moods,
-            )
-        )
-        logger.info(
-            "カード更新 content_id=%s moods=%s summary=%s",
-            entry.content_id,
-            moods,
-            summary[:40],
-        )
+        latest = [
+            e for e in _load_index_entries(docs_path) if e.content_id == entry.content_id
+        ]
+        refreshed.append(latest[0] if latest else entry)
+        logger.info("記事を現行テンプレで再出力 content_id=%s", entry.content_id)
 
     _save_index_entries(docs_path, refreshed)
     index_html = _render_index_page(refreshed, pages_base_url=github_pages_base_url)

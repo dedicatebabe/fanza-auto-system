@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.3.0
-# Date: 2026-09-14
-# Summary: FANZA URLはXに出さない。ジャケット画像を添付する
+# Version: 1.4.0
+# Date: 2026-09-16
+# Summary: 自前カバー優先でジャケットを添付する
 # ==========================================
 """X（Twitter）への安全な投稿モジュール。"""
 
@@ -27,6 +27,14 @@ ALLOWED_IMAGE_HOSTS = (
     "awsimgsrc.dmm.co.jp",
     "awsimgsrc.dmm.com",
 )
+JACKET_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://www.dmm.co.jp/",
+    "Accept": "image/jpeg,image/png,image/webp,image/*;q=0.8",
+}
 
 
 def _build_api_v2_client(
@@ -87,6 +95,28 @@ def _is_allowed_image_url(image_url: str) -> bool:
     return any(host == allowed or host.endswith("." + allowed) for allowed in ALLOWED_IMAGE_HOSTS)
 
 
+def _upload_local_media(
+    path: Path,
+    *,
+    api_key: str,
+    api_secret: str,
+    access_token: str,
+    access_secret: str,
+) -> str | None:
+    try:
+        api = _build_api_v1(api_key, api_secret, access_token, access_secret)
+        media = api.media_upload(filename=str(path))
+        media_id = str(getattr(media, "media_id", "") or "")
+        if not media_id:
+            logger.warning("画像アップロード結果に media_id がない")
+            return None
+        logger.info("X 画像アップロード成功 media_id=%s path=%s", media_id, path)
+        return media_id
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("X 画像アップロード失敗: %s", exc)
+        return None
+
+
 def _upload_jacket_media(
     image_url: str,
     *,
@@ -94,31 +124,44 @@ def _upload_jacket_media(
     api_secret: str,
     access_token: str,
     access_secret: str,
+    local_image_path: str | None = None,
 ) -> str | None:
-    """DMM公式ジャケットを一時保存して media_id を返す。失敗時は None。"""
+    """ジャケットを media_id にする。ローカルカバーを優先する。"""
+    local = Path(local_image_path) if local_image_path else None
+    if local is not None and local.is_file():
+        return _upload_local_media(
+            local,
+            api_key=api_key,
+            api_secret=api_secret,
+            access_token=access_token,
+            access_secret=access_secret,
+        )
+
     url = (image_url or "").strip()
     if not url or not _is_allowed_image_url(url):
         logger.warning("画像URLが空、または許可ホストではないため添付しない")
         return None
     try:
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, headers=JACKET_HEADERS, timeout=30)
         response.raise_for_status()
         suffix = Path(urlparse(url).path).suffix.lower() or ".jpg"
         if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
             suffix = ".jpg"
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(response.content)
-            tmp.flush()
-            api = _build_api_v1(api_key, api_secret, access_token, access_secret)
-            media = api.media_upload(filename=tmp.name)
-        media_id = str(getattr(media, "media_id", "") or "")
-        if not media_id:
-            logger.warning("画像アップロード結果に media_id がない")
-            return None
-        logger.info("X 画像アップロード成功 media_id=%s", media_id)
-        return media_id
+            tmp_path = Path(tmp.name)
+        try:
+            return _upload_local_media(
+                tmp_path,
+                api_key=api_key,
+                api_secret=api_secret,
+                access_token=access_token,
+                access_secret=access_secret,
+            )
+        finally:
+            tmp_path.unlink(missing_ok=True)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("X 画像アップロード失敗: %s", exc)
+        logger.warning("X 画像ダウンロード失敗: %s", exc)
         return None
 
 
@@ -131,6 +174,7 @@ def post_to_x(
     access_secret: str,
     skip_sleep: bool = False,
     image_url: str | None = None,
+    local_image_path: str | None = None,
 ) -> str:
     """
     紹介ページURLを含む投稿文を X に投稿する。
@@ -147,16 +191,19 @@ def post_to_x(
         pre_post_random_sleep()
 
     media_ids: list[str] = []
-    if image_url:
+    if local_image_path or image_url:
         media_id = _upload_jacket_media(
-            image_url,
+            image_url or "",
             api_key=api_key,
             api_secret=api_secret,
             access_token=access_token,
             access_secret=access_secret,
+            local_image_path=local_image_path,
         )
         if media_id:
             media_ids.append(media_id)
+        else:
+            logger.warning("ジャケット添付に失敗したためテキストのみ投稿する")
 
     client = _build_api_v2_client(api_key, api_secret, access_token, access_secret)
     logger.info("X へ投稿します（文字数=%s media=%s）", len(text), len(media_ids))
