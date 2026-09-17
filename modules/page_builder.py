@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.19.0
-# Date: 2026-09-16
-# Summary: 公開記事からジャンル欄を外す
+# Version: 2.20.0
+# Date: 2026-09-17
+# Summary: チャット見出しを Livechat のみにする
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -340,8 +340,7 @@ def render_chat_block(affiliate_id: str, *, more_link: bool = True) -> str:
         more = '<a class="chat-more" href="chat.html">チャットの入口へ</a>'
     return (
         '<section class="chat-block">\n'
-        "  <h2>今いるチャット</h2>\n"
-        '  <p class="chat-lead">公式バナー。今チャット中の顔が出る。</p>\n'
+        "  <h2>Livechat</h2>\n"
         f'  <div class="chat-grid">\n    {cards}\n  </div>\n'
         f"  {more}\n"
         "</section>\n"
@@ -406,8 +405,8 @@ def _write_chat_page(
     page_html = _apply_template(
         template,
         {
-            "PAGE_TITLE": "今いるチャット",
-            "META_DESCRIPTION": "公式バナー。今チャット中の顔が出る。",
+            "PAGE_TITLE": "Livechat",
+            "META_DESCRIPTION": "Livechat",
             "CANONICAL_URL": html.escape(pages_base_url.rstrip("/") + "/chat.html"),
             "CHAT_CARDS": cards,
             "YEAR": str(datetime.now(timezone.utc).year),
