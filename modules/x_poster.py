@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.4.0
-# Date: 2026-09-16
-# Summary: 自前カバー優先でジャケットを添付する
+# Version: 1.5.0
+# Date: 2026-09-17
+# Summary: tweepyに無い possibly_sensitive をAPI直指定する
 # ==========================================
 """X（Twitter）への安全な投稿モジュール。"""
 
@@ -207,13 +207,19 @@ def post_to_x(
 
     client = _build_api_v2_client(api_key, api_secret, access_token, access_secret)
     logger.info("X へ投稿します（文字数=%s media=%s）", len(text), len(media_ids))
-    kwargs: dict = {
+    payload: dict = {
         "text": text,
         "possibly_sensitive": True,
     }
     if media_ids:
-        kwargs["media_ids"] = media_ids
-    response = client.create_tweet(**kwargs)
+        payload["media"] = {"media_ids": [str(media_id) for media_id in media_ids]}
+    # tweepy 4.x の create_tweet は possibly_sensitive を受け取らない。
+    response = client._make_request(
+        "POST",
+        "/2/tweets",
+        json=payload,
+        user_auth=True,
+    )
     tweet_id = _tweet_id_from_response(response)
     logger.info("X 投稿成功 tweet_id=%s", tweet_id)
     return tweet_id
