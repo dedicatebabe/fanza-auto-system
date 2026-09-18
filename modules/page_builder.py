@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 2.20.0
-# Date: 2026-09-17
-# Summary: チャット見出しを Livechat のみにする
+# Version: 2.21.0
+# Date: 2026-09-18
+# Summary: 審査用に公開ページからアフィリIDを外す
 # ==========================================
 """GitHub Pages 向け HTML 生成モジュール。"""
 
@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse, urlunparse
 
 import requests
 
@@ -40,6 +40,8 @@ SITE_NAME = "夜のリブレ"
 AFFILIATE_GATE = "https://al.fanza.co.jp/"
 LIVECHAT_BANNER_AFFILIATE_ID = "nightlibrary-001"
 NEW_ARRIVAL_WIDGET_ID = "9f031fe56e47210db1962053ed1bbddc"
+# サイト審査中は公開HTMLにアフィリIDを出さない。承認後に True にする。
+PUBLISH_AFFILIATE_IDS = False
 JACKET_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -221,7 +223,7 @@ def _related_price_line(item: FanzaItem) -> str:
 
 
 def _render_related_card(item: FanzaItem) -> str:
-    href = html.escape(item.affiliate_url, quote=True)
+    href = html.escape(public_item_url(item.affiliate_url), quote=True)
     title = html.escape(item.title)
     price = html.escape(_related_price_line(item))
     thumb = ""
@@ -250,9 +252,31 @@ def _render_related_section(title: str, items: tuple[FanzaItem, ...] | list[Fanz
     )
 
 
+def public_item_url(url: str) -> str:
+    """公開ページ用URL。審査中はアフィリゲートと af_id を外す。"""
+    text = html.unescape((url or "").strip())
+    if not text:
+        return ""
+    parsed = urlparse(text)
+    host = (parsed.hostname or "").lower()
+    if host in {"al.fanza.co.jp", "www.al.fanza.co.jp"}:
+        lurl = (parse_qs(parsed.query).get("lurl") or [""])[0].strip()
+        return lurl or text
+    if PUBLISH_AFFILIATE_IDS:
+        return text
+    kept = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key not in {"af_id", "affiliate_id"}
+    ]
+    return urlunparse(parsed._replace(query=urlencode(kept)))
+
+
 def wrap_affiliate_url(destination: str, affiliate_id: str) -> str:
     """公式URLを DMM アフィリゲートで包む。"""
     dest = (destination or "").strip()
+    if not PUBLISH_AFFILIATE_IDS:
+        return dest
     af_id = (affiliate_id or "").strip()
     if not dest or not af_id:
         return ""
@@ -287,15 +311,22 @@ def _resolve_affiliate_id(*candidates: str) -> str:
 def _render_chat_cards(affiliate_id: str) -> str:
     """公式ライブチャットバナー。管理画面の埋め込みを使う。"""
     _ = affiliate_id
-    af = html.escape(LIVECHAT_BANNER_AFFILIATE_ID, quote=True)
-    event_src = (
-        "https://www.dmm.co.jp/live/api/-/online-banner/"
-        f"?size=300_250&type=avevent&af_id={af}"
-    )
-    amateur_src = (
-        "https://livechat.dmm.co.jp/publicads"
-        f"?&size=S&design=B&affiliate_id={af}"
-    )
+    if PUBLISH_AFFILIATE_IDS:
+        af = html.escape(LIVECHAT_BANNER_AFFILIATE_ID, quote=True)
+        event_src = (
+            "https://www.dmm.co.jp/live/api/-/online-banner/"
+            f"?size=300_250&type=avevent&af_id={af}"
+        )
+        amateur_src = (
+            "https://livechat.dmm.co.jp/publicads"
+            f"?&size=S&design=B&affiliate_id={af}"
+        )
+    else:
+        event_src = (
+            "https://www.dmm.co.jp/live/api/-/online-banner/"
+            "?size=300_250&type=avevent"
+        )
+        amateur_src = "https://livechat.dmm.co.jp/publicads?&size=S&design=B"
     return (
         '<div class="chat-banner">'
         '<iframe id="onlineBannerAvevent" title="FANZAライブチャット 女優イベント" '
@@ -310,6 +341,8 @@ def _render_chat_cards(affiliate_id: str) -> str:
 
 def _render_new_arrival_frame() -> str:
     """公式新着ウィジェットのバナー枠だけ。"""
+    if not PUBLISH_AFFILIATE_IDS:
+        return ""
     wid = html.escape(NEW_ARRIVAL_WIDGET_ID, quote=True)
     return (
         '<div class="chat-banner">'
@@ -323,11 +356,14 @@ def _render_new_arrival_frame() -> str:
 
 def render_new_arrival_widget() -> str:
     """記事用の公式FANZA動画新着ウィジェット。"""
+    frame = _render_new_arrival_frame()
+    if not frame:
+        return ""
     return (
         '<section class="widget-strip">\n'
         "  <h2>FANZAの新着</h2>\n"
         '  <p class="widget-lead">公式バナー。紹介してない作品も出る。</p>\n'
-        f'  {_render_new_arrival_frame()}\n'
+        f'  {frame}\n'
         "</section>\n"
     )
 
@@ -497,7 +533,7 @@ def _render_article_page(
     page_title = html.escape(item.title)
     meta_source = (summary or item.description.replace("\n", " ")).strip()
     description_meta = html.escape(meta_source[:160])
-    affiliate = html.escape(item.affiliate_url, quote=True)
+    affiliate = html.escape(public_item_url(item.affiliate_url), quote=True)
     resolved_af_id = _resolve_affiliate_id(affiliate_id, item.affiliate_url)
     canonical = html.escape(build_cushion_page_url(pages_base_url, item.content_id))
     price_line = html.escape(_format_price_display(item))
