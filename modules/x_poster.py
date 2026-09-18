@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.5.0
-# Date: 2026-09-17
-# Summary: tweepyに無い possibly_sensitive をAPI直指定する
+# Version: 1.6.0
+# Date: 2026-09-18
+# Summary: 投稿はtweepy純正にし、センシティブ指定を外す
 # ==========================================
 """X（Twitter）への安全な投稿モジュール。"""
 
@@ -207,19 +207,18 @@ def post_to_x(
 
     client = _build_api_v2_client(api_key, api_secret, access_token, access_secret)
     logger.info("X へ投稿します（文字数=%s media=%s）", len(text), len(media_ids))
-    payload: dict = {
-        "text": text,
-        "possibly_sensitive": True,
-    }
+    kwargs: dict = {"text": text}
     if media_ids:
-        payload["media"] = {"media_ids": [str(media_id) for media_id in media_ids]}
-    # tweepy 4.x の create_tweet は possibly_sensitive を受け取らない。
-    response = client._make_request(
-        "POST",
-        "/2/tweets",
-        json=payload,
-        user_auth=True,
-    )
+        kwargs["media_ids"] = media_ids
+    try:
+        response = client.create_tweet(**kwargs)
+    except tweepy.HTTPException as exc:
+        logger.error(
+            "X 投稿失敗 status=%s errors=%s",
+            getattr(exc, "response", None) and getattr(exc.response, "status_code", None),
+            getattr(exc, "api_errors", None) or getattr(exc, "api_messages", None) or str(exc),
+        )
+        raise
     tweet_id = _tweet_id_from_response(response)
     logger.info("X 投稿成功 tweet_id=%s", tweet_id)
     return tweet_id
