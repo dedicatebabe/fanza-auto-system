@@ -1,7 +1,7 @@
 # ==========================================
-# Version: 1.6.0
-# Date: 2026-09-17
-# Summary: 16時の懐かしい女優枠を残し、22時と24時も維持
+# Version: 1.7.0
+# Date: 2026-09-18
+# Summary: checkout と setup-python を Node 24 対応版へ上げる
 # ==========================================
 name: FANZA Auto Affiliate Cron
 
@@ -42,10 +42,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
