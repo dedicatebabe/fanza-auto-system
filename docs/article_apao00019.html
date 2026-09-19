@@ -1,0 +1,496 @@
+<!--
+Version: 2.16.0
+Date: 2026-09-16
+Summary: 記事のteaserとジャンル表記を外す
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>究極 フェイクロリコレクション3 | 夜のリブレ</title>
+  <meta name="description" content="「フェイク」の名に恥じない、見た目の小柄で可憐な雰囲気からのギャップがとにかくヤバい。宝生瑠璃ちゃんをはじめ、華奢な身体で魅せるあの表情と反応の濃密さ……制作者のフェチズムが暴走してるレベル。このギャップに落ちない男いる？">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="究極 フェイクロリコレクション3">
+  <meta property="og:description" content="「フェイク」の名に恥じない、見た目の小柄で可憐な雰囲気からのギャップがとにかくヤバい。宝生瑠璃ちゃんをはじめ、華奢な身体で魅せるあの表情と反応の濃密さ……制作者のフェチズムが暴走してるレベル。このギャップに落ちない男いる？">
+  <meta property="og:url" content="https://dedicatebabe.github.io/fanza-auto-system/article_apao00019.html">
+  <meta property="og:image" content="https://dedicatebabe.github.io/fanza-auto-system/covers/apao00019.jpg">
+  <meta name="twitter:image" content="https://dedicatebabe.github.io/fanza-auto-system/covers/apao00019.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Shippori+Mincho:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #12151c;
+      --bg-mid: #1a1f2b;
+      --panel: rgba(255, 255, 255, 0.045);
+      --text: #f3f1ec;
+      --muted: #a8a59c;
+      --line: rgba(243, 241, 236, 0.12);
+      --gold: #d4b483;
+      --ink: #0b0d12;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Instrument Sans", "Hiragino Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 70% 45% at 80% -5%, rgba(212, 180, 131, 0.16), transparent 55%),
+        radial-gradient(ellipse 50% 35% at 0% 20%, rgba(88, 110, 160, 0.18), transparent 50%),
+        linear-gradient(165deg, var(--bg-deep), var(--bg-mid) 55%, #10131a);
+      line-height: 1.85;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+    a { color: inherit; text-decoration: none; }
+    .site-header, .main, .site-footer { position: relative; z-index: 1; }
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      border-bottom: 1px solid var(--line);
+      background: rgba(18, 21, 28, 0.78);
+      backdrop-filter: blur(16px);
+    }
+    .header-inner, .main, .footer-inner {
+      width: min(860px, calc(100% - 2rem));
+      margin: 0 auto;
+    }
+    .header-inner {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #2a2430, #12151c);
+      border: 1px solid rgba(212, 180, 131, 0.35);
+      color: var(--gold);
+      font-family: "Shippori Mincho", serif;
+      font-weight: 700;
+    }
+    .brand strong {
+      display: block;
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .brand span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.76rem;
+      letter-spacing: 0.06em;
+    }
+    .site-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.15rem;
+    }
+    .nav-link {
+      color: var(--muted);
+      font-size: 0.88rem;
+      letter-spacing: 0.04em;
+    }
+    .nav-link:hover,
+    .nav-link.is-current { color: var(--gold); }
+    .nav-chat {
+      padding: 0.38rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 180, 131, 0.45);
+      background: rgba(212, 180, 131, 0.14);
+      color: var(--gold);
+    }
+    .nav-chat:hover,
+    .nav-chat.is-current {
+      background: rgba(212, 180, 131, 0.22);
+      color: var(--gold);
+    }
+    .main { padding: 1.8rem 0 5rem; }
+    .article-shell {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      animation: rise 0.7s ease both;
+    }
+    .hero-media {
+      position: relative;
+      background: #0b0d12;
+    }
+    .hero-media::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 38%;
+      background: linear-gradient(transparent, rgba(18, 21, 28, 0.92));
+    }
+    .hero-media img {
+      width: 100%;
+      max-height: 480px;
+      object-fit: cover;
+      display: block;
+    }
+    .article-body { padding: 1.6rem 1.5rem 2rem; }
+    .badge {
+      display: inline-block;
+      margin: 0 0 0.8rem;
+      padding: 0.28rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(212, 180, 131, 0.14);
+      border: 1px solid rgba(212, 180, 131, 0.35);
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    h1 {
+      margin: 0 0 0.7rem;
+      font-family: "Shippori Mincho", serif;
+      font-size: clamp(1.4rem, 3.2vw, 1.95rem);
+      line-height: 1.4;
+      font-weight: 600;
+    }
+    .meta {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .cta-early {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 52px;
+      margin: 0 0 1.6rem;
+      padding: 0.85rem 1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 180, 131, 0.45);
+      background: rgba(212, 180, 131, 0.12);
+      color: var(--gold) !important;
+      font-size: 0.98rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      transition: background .2s ease, transform .2s ease;
+    }
+    .cta-early:hover {
+      background: rgba(212, 180, 131, 0.2);
+      transform: translateY(-1px);
+    }
+    .content h2 {
+      margin: 2rem 0 0.8rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .content p { margin: 0.8rem 0; color: rgba(243, 241, 236, 0.92); }
+    .content ul {
+      margin: 0.8rem 0 1.1rem;
+      padding: 1rem 1rem 1rem 1.45rem;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .content li { margin: 0.4rem 0; }
+    .cta-panel {
+      position: sticky;
+      bottom: 0.85rem;
+      margin-top: 2.2rem;
+      padding: 1.2rem;
+      border-radius: 18px;
+      border: 1px solid rgba(212, 180, 131, 0.35);
+      background:
+        linear-gradient(160deg, rgba(212, 180, 131, 0.18), rgba(20, 24, 34, 0.95) 55%);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+      text-align: center;
+    }
+    .cta-panel p {
+      margin: 0 0 0.9rem;
+      color: rgba(243, 241, 236, 0.78);
+      font-size: 0.9rem;
+    }
+    .cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 58px;
+      padding: 0.95rem 1rem;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #e6c79a, #d4b483 45%, #b8945f);
+      color: #1a140c !important;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+    .cta:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+    .back {
+      display: inline-block;
+      margin-top: 1.45rem;
+      color: var(--gold);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+    }
+    .related {
+      margin-top: 2.4rem;
+      display: grid;
+      gap: 1.6rem;
+    }
+    .related-block h2 {
+      margin: 0 0 0.85rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+    .related-card {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .related-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(212, 180, 131, 0.4);
+    }
+    .related-card .thumb {
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      background: #0b0d12;
+    }
+    .related-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .related-card .body {
+      padding: 0.75rem 0.85rem 0.9rem;
+    }
+    .related-card .price {
+      margin: 0 0 0.35rem;
+      color: var(--gold);
+      font-size: 0.78rem;
+    }
+    .related-card h3 {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .chat-block {
+      margin-top: 2.4rem;
+      padding: 1.25rem 1.15rem 1.35rem;
+      border-radius: 18px;
+      border: 1px solid rgba(212, 180, 131, 0.35);
+      background:
+        linear-gradient(160deg, rgba(212, 180, 131, 0.16), rgba(20, 24, 34, 0.95) 55%);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    }
+    .chat-block h2 {
+      margin: 0 0 0.45rem;
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .chat-lead {
+      margin: 0 0 0.95rem;
+      color: rgba(243, 241, 236, 0.78);
+      font-size: 0.9rem;
+    }
+    .chat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+      justify-items: center;
+    }
+    .chat-banner {
+      width: 300px;
+      max-width: 100%;
+      height: 250px;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #0b0d12;
+    }
+    .chat-banner iframe {
+      display: block;
+      width: 300px;
+      height: 250px;
+      border: 0;
+    }
+    .chat-more {
+      display: inline-block;
+      margin-top: 0.95rem;
+      color: var(--gold);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+    }
+    .widget-strip {
+      margin-top: 2.4rem;
+      padding: 1.25rem 1.15rem 1.45rem;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+    }
+    .widget-strip h2 {
+      margin: 0 0 0.45rem;
+      font-family: "Shippori Mincho", serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+    .widget-lead {
+      margin: 0 0 0.95rem;
+      color: rgba(243, 241, 236, 0.78);
+      font-size: 0.9rem;
+    }
+    .widget-frame {
+      width: 300px;
+      max-width: 100%;
+      min-height: 250px;
+      margin: 0 auto;
+    }
+    .site-footer {
+      border-top: 1px solid var(--line);
+      background: rgba(8, 10, 14, 0.55);
+      padding: 2.2rem 0;
+    }
+    .footer-inner {
+      display: grid;
+      gap: 0.45rem;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+    .footer-inner strong {
+      color: var(--text);
+      font-family: "Shippori Mincho", serif;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 640px) {
+      .article-body { padding: 1.25rem 1rem 1.6rem; }
+      .cta { font-size: 0.98rem; min-height: 54px; }
+      .related-grid,
+      .chat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">夜</div>
+        <div>
+          <strong>夜のリブレ</strong>
+          <span>今夜の一本</span>
+        </div>
+      </a>
+      <nav class="site-nav">
+        <a class="nav-link" href="index.html">紹介</a>
+        <a class="nav-link nav-chat" href="chat.html">ライブチャット</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <article class="article-shell">
+      <div class="hero-media"><img src="covers/apao00019.jpg" alt="究極 フェイクロリコレクション3" loading="lazy"></div>
+      <div class="article-body">
+        <span class="badge">30% OFF</span>
+        <h1>究極 フェイクロリコレクション3</h1>
+        <p class="meta">定価 310円 → 今 217円</p>
+        <a class="cta-early" href="https://video.dmm.co.jp/av/content/?id=apao00019" rel="nofollow sponsored noopener" target="_blank">公式ページへ</a>
+        <div class="content">
+          <h2>Review</h2>
+<p>「フェイク」の名に恥じない、見た目の小柄で可憐な雰囲気からのギャップがとにかくヤバい。宝生瑠璃ちゃんをはじめ、華奢な身体で魅せるあの表情と反応の濃密さ……制作者のフェチズムが暴走してるレベル。このギャップに落ちない男いる？</p>
+
+        </div>
+        <div class="cta-panel">
+          <p>価格とサンプルは公式にあります。</p>
+          <a class="cta" href="https://video.dmm.co.jp/av/content/?id=apao00019" rel="nofollow sponsored noopener" target="_blank">FANZAで見る</a>
+        </div>
+        <div class="related">
+<section class="related-block">
+  <h2>同じシリーズ：ロリコレクション</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://video.dmm.co.jp/av/content/?id=apao002" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/apao00002/apao00002pl.jpg" alt="究極 フェイクロリコレクション477" loading="lazy"></div><div class="body"><p class="price">217円 / 30%OFF</p><h3>究極 フェイクロリコレクション477</h3></div></a>
+<a class="related-card" href="https://video.dmm.co.jp/av/content/?id=apao00017" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/apao00017/apao00017pl.jpg" alt="究極 フェイクロリコレクション2" loading="lazy"></div><div class="body"><p class="price">217円 / 30%OFF</p><h3>究極 フェイクロリコレクション2</h3></div></a>
+  </div>
+</section>
+<section class="related-block">
+  <h2>堤さやかの作品</h2>
+  <div class="related-grid">
+    <a class="related-card" href="https://video.dmm.co.jp/av/content/?id=55t2800291" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/55t2800291/55t2800291pl.jpg" alt="あの時の君に会いたい。 堤さやか 8時間" loading="lazy"></div><div class="body"><p class="price">500円</p><h3>あの時の君に会いたい。 堤さやか 8時間</h3></div></a>
+<a class="related-card" href="https://video.dmm.co.jp/av/content/?id=1iesp00010h" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/1iesp00010h/1iesp00010hpl.jpg" alt="【AIリマスター】銀行強盗事件 ～知られざる真実～" loading="lazy"></div><div class="body"><p class="price">300円</p><h3>【AIリマスター】銀行強盗事件 ～知られざる真実～</h3></div></a>
+<a class="related-card" href="https://video.dmm.co.jp/av/content/?id=wtj002" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/ddt00012/ddt00012pl.jpg" alt="白い性欲 堤さやか" loading="lazy"></div><div class="body"><p class="price">310円</p><h3>白い性欲 堤さやか</h3></div></a>
+<a class="related-card" href="https://video.dmm.co.jp/av/content/?id=mde046" rel="nofollow sponsored noopener" target="_blank"><div class="thumb"><img src="https://pics.dmm.co.jp/digital/video/mde00046/mde00046pl.jpg" alt="ドリームウーマン DREAM WOMAN VOL.11 堤さやか" loading="lazy"></div><div class="body"><p class="price">300円</p><h3>ドリームウーマン DREAM WOMAN VOL.11 堤さやか</h3></div></a>
+  </div>
+</section>
+</div>
+
+        
+        <section class="chat-block">
+  <h2>Livechat</h2>
+  <div class="chat-grid">
+    <div class="chat-banner"><iframe id="onlineBannerAvevent" title="FANZAライブチャット 女優イベント" frameborder="0" scrolling="no" width="300" height="250" src="https://www.dmm.co.jp/live/api/-/online-banner/?size=300_250&type=avevent"></iframe></div>
+<div class="chat-banner"><iframe id="onlineBannerAmateur" title="FANZAライブチャット 素人" frameborder="0" scrolling="no" width="300" height="250" src="https://livechat.dmm.co.jp/publicads?&size=S&design=B"></iframe></div>
+  </div>
+  <a class="chat-more" href="chat.html">チャットの入口へ</a>
+</section>
+
+        <a class="back" href="index.html">← 一覧へ</a>
+      </div>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <strong>夜のリブレ</strong>
+      <div>このページにはアフィリエイト広告が含まれます。</div>
+      <div>&copy; 2026 夜のリブレ</div>
+    </div>
+  </footer>
+</body>
+</html>
